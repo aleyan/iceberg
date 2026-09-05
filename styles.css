@@ -122,6 +122,10 @@
 }
 
 .aleyan-iceberg__item code {
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border-radius: 0;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.91em;
 }
