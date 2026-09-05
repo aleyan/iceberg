@@ -450,21 +450,7 @@ export function mountIceberg(
   const timer = new THREE.Timer();
   timer.connect(document);
 
-  function resize() {
-    const bounds = host.getBoundingClientRect();
-    width = Math.max(1, Math.round(bounds.width));
-    height = Math.max(1, Math.round(bounds.height));
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
-    renderer.setSize(width, height, false);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-    if (framingBounds) frameIcebergForScrolling(framingBounds, true);
-  }
-  const resizeObserver = new ResizeObserver(resize);
-  resizeObserver.observe(host);
-  resize();
-
-  renderer.setAnimationLoop((timestamp) => {
+  function renderFrame(timestamp: number) {
     timer.update(timestamp);
     const elapsed = timer.getElapsed();
     if (cameraRail.ready) {
@@ -491,7 +477,26 @@ export function mountIceberg(
     );
     itemLabels.update(camera, width, height);
     renderer.render(scene, camera);
-  });
+  }
+
+  function resize() {
+    const bounds = host.getBoundingClientRect();
+    width = Math.max(1, Math.round(bounds.width));
+    height = Math.max(1, Math.round(bounds.height));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    if (framingBounds) frameIcebergForScrolling(framingBounds, true);
+    // Changing the drawing buffer clears it. Repaint synchronously so the
+    // browser cannot present the transparent canvas between resize and RAF.
+    renderFrame(performance.now());
+  }
+  const resizeObserver = new ResizeObserver(resize);
+  resizeObserver.observe(host);
+  resize();
+
+  renderer.setAnimationLoop(renderFrame);
 
   function dispose() {
     if (disposed) return;

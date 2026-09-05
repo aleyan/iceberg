@@ -39,8 +39,14 @@ if (host) {
 #iceberg {
   width: 100%;
   height: 100svh;
+  --aleyan-iceberg-font-family: "Atkinson", sans-serif;
+  --aleyan-iceberg-mono-font-family: "IosevkaCustom", monospace;
 }
 ```
+
+The optional font custom properties inherit through every generated control
+and are read when the WebGL label atlas is built. Define them on the host to
+match the typography of the containing application.
 
 `mountIceberg` does not run during import, so the package is safe to import
 from server-rendered projects. Call it only in the browser (for example from an

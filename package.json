@@ -1,6 +1,6 @@
 {
   "name": "@aleyan/iceberg",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A reusable, interactive 3D iceberg with depth-aware item labels.",
   "keywords": [
     "iceberg",
