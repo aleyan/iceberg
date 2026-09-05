@@ -335,6 +335,9 @@ export function mountIceberg(
       : event.deltaMode === 2
         ? event.deltaY * height
         : event.deltaY;
+    // Let an embedding page move the viewer to the top edge before the
+    // iceberg starts consuming downward scroll.
+    if (deltaPixels > 0 && host.getBoundingClientRect().top > 0.5) return;
     const nextY = THREE.MathUtils.clamp(
       cameraRail.desiredY - deltaPixels * 0.008,
       cameraRail.minY,
