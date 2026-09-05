@@ -23,6 +23,7 @@ export interface IcebergAssets {
 
 export interface IcebergOptions {
   items: readonly IcebergItem[];
+  aboveWaterLabelStretch?: number;
   assets?: Partial<IcebergAssets>;
   ariaLabel?: string;
   canvasAriaLabel?: string;
@@ -430,6 +431,7 @@ export function mountIceberg(
       if (framingBounds) frameIcebergForScrolling(framingBounds, true);
     },
     {
+      aboveWaterLabelStretch: options.aboveWaterLabelStretch ?? 1,
       ariaLabel: options.itemsAriaLabel ?? "Iceberg items",
       initialItem: options.initialItem,
       syncUrl: options.syncUrl ?? true,

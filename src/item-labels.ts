@@ -24,7 +24,12 @@ export function createItemLabels(
   sourceItems: readonly IcebergItem[],
   navigate: (position: THREE.Vector3, angle: number, instant: boolean) => void,
   setVerticalRange: (minimum: number, maximum: number) => void,
-  options: { ariaLabel: string; initialItem?: string; syncUrl: boolean },
+  options: {
+    aboveWaterLabelStretch: number;
+    ariaLabel: string;
+    initialItem?: string;
+    syncUrl: boolean;
+  },
 ) {
   const instanceId = ++labelSetId;
   const layer = document.createElement('section');
@@ -133,7 +138,13 @@ export function createItemLabels(
     const direction = new THREE.Vector3();
     measurements.disconnect();
     layer.replaceChildren();
-    labels = arrangeItems(items, waterLevel, bounds.max.y, bounds.min.y).map(({ item, y, angle }) => {
+    labels = arrangeItems(
+      items,
+      waterLevel,
+      bounds.max.y,
+      bounds.min.y,
+      options.aboveWaterLabelStretch,
+    ).map(({ item, y, angle }) => {
       direction.set(Math.sin(angle), 0, Math.cos(angle));
       const origin = new THREE.Vector3(center.x, y, center.z).addScaledVector(direction, radius);
       ray.set(origin, direction.clone().negate());

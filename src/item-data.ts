@@ -32,7 +32,13 @@ export function parseItems(source: string): IcebergItem[] {
 }
 
 /** World height is monotonic within each bucket; cursedness spreads around ±π. */
-export function arrangeItems(items: readonly IcebergItem[], water: number, top: number, bottom: number) {
+export function arrangeItems(
+  items: readonly IcebergItem[],
+  water: number,
+  top: number,
+  bottom: number,
+  aboveWaterLabelStretch = 1,
+) {
   const depth = water - bottom;
   return Array.from({ length: 10 }, (_, index) => index + 1).flatMap(bucket => {
     const group = items.filter(item => item.obscurity_bucket === bucket);
@@ -46,7 +52,8 @@ export function arrangeItems(items: readonly IcebergItem[], water: number, top: 
       // abyss has no shell to distribute labels across, so use a readable
       // line-height rather than squeezing the whole bucket into a short band.
       const surfaceGap = 1;
-      const surfaceSpan = Math.max(top - water, group.length * 0.48);
+      const surfaceSpan = Math.max(top - water, group.length * 0.48)
+        * Math.max(0.25, aboveWaterLabelStretch);
       const underwaterGap = 2.2;
       const submergedSpan = Math.max(0, depth - underwaterGap);
       const abyssSpan = Math.max(depth * 0.24, group.length * 0.82);

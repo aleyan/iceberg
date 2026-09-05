@@ -93,6 +93,7 @@ restores it. Set `syncUrl: false` to keep the containing page URL untouched.
 
 ## Options
 
+- `aboveWaterLabelStretch`: expands the above-water label span; defaults to 1.
 - `assets`: overrides for the model, HDR environment, sky, or relief texture.
 - `hint`: custom interaction hint, or `false` to hide it.
 - `initialItem`: selected item when URL synchronization is disabled.

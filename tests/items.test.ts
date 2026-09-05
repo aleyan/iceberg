@@ -27,6 +27,18 @@ test('orders depth by bucket and obscurity, leaving room around the water and be
   expect(Math.max(...abyss.map(p => p.y)) - Math.min(...abyss.map(p => p.y))).toBeGreaterThan(0);
 });
 
+test('can stretch the above-water label layout without moving submerged buckets', () => {
+  const normal = arrangeItems(items, -0.72, 2.5, -22);
+  const stretched = arrangeItems(items, -0.72, 2.5, -22, 2);
+  const range = (placed: typeof normal, bucket: number) => {
+    const heights = placed.filter(item => item.item.obscurity_bucket === bucket).map(item => item.y);
+    return Math.max(...heights) - Math.min(...heights);
+  };
+  expect(range(stretched, 1)).toBeCloseTo(range(normal, 1) * 2);
+  expect(stretched.filter(item => item.item.obscurity_bucket > 1).map(item => item.y))
+    .toEqual(normal.filter(item => item.item.obscurity_bucket > 1).map(item => item.y));
+});
+
 test('rejects duplicates and unsafe source links', () => {
   expect(() => parseItems(source + source.slice(source.indexOf('[[items]]'), source.indexOf('[[items]]', source.indexOf('[[items]]') + 1)))).toThrow('duplicate slug');
   expect(() => parseItems(source.replace(/url = "[^"]+"/, 'url = "javascript:alert(1)"'))).toThrow('HTTP(S)');
