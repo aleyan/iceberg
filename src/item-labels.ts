@@ -5,6 +5,7 @@ import { arrangeItems, slugFromQuery, type IcebergItem } from './item-data.js';
 
 type Placement = { item: IcebergItem; position: THREE.Vector3; angle: number };
 type Label = Placement & { element: HTMLElement; button: HTMLButtonElement; details: HTMLElement; width: number; height: number; detailHeight: number };
+let labelSetId = 0;
 
 // Support the catalogue's inline code without interpreting arbitrary HTML.
 function appendText(element: HTMLElement, text: string) {
@@ -25,6 +26,7 @@ export function createItemLabels(
   setVerticalRange: (minimum: number, maximum: number) => void,
   options: { ariaLabel: string; initialItem?: string; syncUrl: boolean },
 ) {
+  const instanceId = ++labelSetId;
   const layer = document.createElement('section');
   layer.className = 'aleyan-iceberg__item-layer';
   layer.setAttribute('aria-label', options.ariaLabel);
@@ -161,11 +163,11 @@ export function createItemLabels(
       button.type = 'button';
       button.className = 'aleyan-iceberg__item-name';
       button.setAttribute('aria-expanded', 'false');
-      button.setAttribute('aria-controls', `detail-${item.slug}`);
+      button.setAttribute('aria-controls', `iceberg-${instanceId}-detail-${item.slug}`);
       appendText(button, item.name);
 
       const details = document.createElement('div');
-      details.id = `detail-${item.slug}`;
+      details.id = `iceberg-${instanceId}-detail-${item.slug}`;
       details.className = 'aleyan-iceberg__item-details';
       details.hidden = true;
       const description = document.createElement('p');

@@ -106,8 +106,9 @@ bun run build
 ```
 
 The package publishes only `dist/`, `assets/`, `styles.css`, and its
-documentation/license. The Python catalogue under `demo/items.toml` is for
-local development and tests and is deliberately not part of the npm package.
+documentation/license. The small synthetic catalogue under `demo/items.toml`
+is for local development and tests and is deliberately not part of the npm
+package. The real Python catalogue remains in the consuming site.
 
 ## Assets
 

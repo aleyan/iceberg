@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "iceberg",
+      "name": "@aleyan/iceberg",
       "dependencies": {
         "smol-toml": "^1.8.0",
         "three-mesh-bvh": "^0.9.14",

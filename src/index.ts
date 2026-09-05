@@ -72,6 +72,7 @@ export function mountIceberg(
   const stillFrame = options.stillFrame ?? false;
   const assets = { ...defaultIcebergAssets, ...options.assets };
   const addedHostClass = !host.classList.contains("aleyan-iceberg");
+  const previousAriaLabel = host.getAttribute("aria-label");
   host.classList.add("aleyan-iceberg");
   host.setAttribute(
     "aria-label",
@@ -515,6 +516,8 @@ export function mountIceberg(
     hint.remove();
     loading.remove();
     if (addedHostClass) host.classList.remove("aleyan-iceberg");
+    if (previousAriaLabel === null) host.removeAttribute("aria-label");
+    else host.setAttribute("aria-label", previousAriaLabel);
   }
 
   return { ready, dispose };

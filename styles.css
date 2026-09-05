@@ -8,6 +8,7 @@
   isolation: isolate;
   min-width: 320px;
   overflow: hidden;
+  container-type: inline-size;
   color-scheme: dark;
   background: #01040c;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -222,7 +223,7 @@
   pointer-events: none;
 }
 
-@media (max-width: 600px) {
+@container (max-width: 600px) {
   .aleyan-iceberg__item {
     width: 160px;
     margin-left: -80px;
