@@ -1,0 +1,68 @@
+{
+  "name": "@aleyan/iceberg",
+  "version": "0.1.0",
+  "description": "A reusable, interactive 3D iceberg with depth-aware item labels.",
+  "keywords": [
+    "iceberg",
+    "three.js",
+    "visualization",
+    "webgl"
+  ],
+  "type": "module",
+  "packageManager": "bun@1.3.8",
+  "sideEffects": [
+    "./styles.css"
+  ],
+  "files": [
+    "assets",
+    "dist",
+    "styles.css",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./styles.css",
+    "./assets/*": "./assets/*",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "check": "bun run typecheck && bun test",
+    "dev": "bun --hot demo/server.ts",
+    "prepack": "bun run check && bun run build",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aleyan/iceberg.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aleyan/iceberg/issues"
+  },
+  "homepage": "https://github.com/aleyan/iceberg#readme",
+  "author": "Alex Yankov",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "smol-toml": "^1.8.0",
+    "three-mesh-bvh": "^0.9.14"
+  },
+  "peerDependencies": {
+    "three": ">=0.180.0 <1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.8",
+    "@types/three": "^0.185.0",
+    "three": "^0.185.1",
+    "typescript": "^5.9.3"
+  }
+}
