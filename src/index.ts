@@ -330,17 +330,20 @@ export function mountIceberg(
 
   function handleIcebergScroll(event: WheelEvent) {
     if (!cameraRail.ready) return;
-    event.preventDefault();
     const deltaPixels = event.deltaMode === 1
       ? event.deltaY * 16
       : event.deltaMode === 2
         ? event.deltaY * height
         : event.deltaY;
-    cameraRail.desiredY = THREE.MathUtils.clamp(
+    const nextY = THREE.MathUtils.clamp(
       cameraRail.desiredY - deltaPixels * 0.008,
       cameraRail.minY,
       cameraRail.maxY,
     );
+    // Embedded icebergs should release the page scroll at either end.
+    if (nextY === cameraRail.desiredY) return;
+    event.preventDefault();
+    cameraRail.desiredY = nextY;
   }
   host.addEventListener("wheel", handleIcebergScroll, { passive: false });
 
