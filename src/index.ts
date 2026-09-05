@@ -192,9 +192,11 @@ export function mountIceberg(
     lastX: 0,
     lastY: 0,
   };
+  let touchTravel = 0;
+  let suppressTouchClick = false;
 
   function beginViewRotation(event: PointerEvent) {
-    if (event.button !== 0 || viewDrag.dragging) return;
+    if (event.pointerType === "touch" || event.button !== 0 || viewDrag.dragging) return;
     event.preventDefault();
     viewDrag.dragging = true;
     viewDrag.pointerId = event.pointerId;
@@ -232,11 +234,64 @@ export function mountIceberg(
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   }
 
+  function beginTouchNavigation(event: PointerEvent) {
+    if (event.pointerType !== "touch" || viewDrag.dragging) return;
+    viewDrag.dragging = true;
+    viewDrag.pointerId = event.pointerId;
+    viewDrag.lastX = event.clientX;
+    viewDrag.lastY = event.clientY;
+    touchTravel = 0;
+  }
+
+  function updateTouchNavigation(event: PointerEvent) {
+    if (event.pointerType !== "touch"
+      || !viewDrag.dragging
+      || event.pointerId !== viewDrag.pointerId) return;
+    const deltaX = event.clientX - viewDrag.lastX;
+    const deltaY = event.clientY - viewDrag.lastY;
+    viewDrag.lastX = event.clientX;
+    viewDrag.lastY = event.clientY;
+    touchTravel += Math.hypot(deltaX, deltaY);
+    if (touchTravel < 4) return;
+    event.preventDefault();
+    cameraOrbit.targetYaw -= deltaX * 0.006;
+    cameraRail.desiredY = THREE.MathUtils.clamp(
+      cameraRail.desiredY + deltaY * 0.025,
+      cameraRail.minY,
+      cameraRail.maxY,
+    );
+  }
+
+  function endTouchNavigation(event: PointerEvent) {
+    if (event.pointerType !== "touch"
+      || !viewDrag.dragging
+      || event.pointerId !== viewDrag.pointerId) return;
+    suppressTouchClick = touchTravel >= 4;
+    viewDrag.dragging = false;
+    viewDrag.pointerId = -1;
+    touchTravel = 0;
+    if (suppressTouchClick) {
+      setTimeout(() => { suppressTouchClick = false; }, 0);
+    }
+  }
+
+  function preventDraggedTouchClick(event: MouseEvent) {
+    if (!suppressTouchClick) return;
+    event.preventDefault();
+    event.stopPropagation();
+    suppressTouchClick = false;
+  }
+
   canvas.addEventListener("pointerdown", beginViewRotation);
   canvas.addEventListener("pointermove", updateViewRotation);
   canvas.addEventListener("pointerup", endViewRotation);
   canvas.addEventListener("pointercancel", endViewRotation);
   canvas.addEventListener("lostpointercapture", endViewRotation);
+  host.addEventListener("pointerdown", beginTouchNavigation);
+  host.addEventListener("pointermove", updateTouchNavigation, { passive: false });
+  host.addEventListener("pointerup", endTouchNavigation);
+  host.addEventListener("pointercancel", endTouchNavigation);
+  host.addEventListener("click", preventDraggedTouchClick, true);
 
   const hemi = new THREE.HemisphereLight(0xc6e3ff, 0x061431, 0.3);
   scene.add(hemi);
@@ -506,6 +561,11 @@ export function mountIceberg(
     renderer.setAnimationLoop(null);
     timer.dispose();
     host.removeEventListener("wheel", handleIcebergScroll);
+    host.removeEventListener("pointerdown", beginTouchNavigation);
+    host.removeEventListener("pointermove", updateTouchNavigation);
+    host.removeEventListener("pointerup", endTouchNavigation);
+    host.removeEventListener("pointercancel", endTouchNavigation);
+    host.removeEventListener("click", preventDraggedTouchClick, true);
     itemLabels.dispose();
     canvas.removeEventListener("keydown", handleCanvasKeydown);
     canvas.removeEventListener("pointerdown", beginViewRotation);
