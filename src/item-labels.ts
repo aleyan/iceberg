@@ -8,12 +8,21 @@ type Label = Placement & { element: HTMLElement; button: HTMLButtonElement; deta
 let labelSetId = 0;
 
 // Support the catalogue's inline code without interpreting arbitrary HTML.
-function appendText(element: HTMLElement, text: string) {
+function appendText(element: HTMLElement, text: string, atomicWords = false) {
   text.split(/(`[^`]+`)/g).forEach(part => {
     if (part.startsWith('`') && part.endsWith('`')) {
       const code = document.createElement('code');
       code.textContent = part.slice(1, -1);
       element.append(code);
+    } else if (atomicWords) {
+      part.split(/(\s+)/).filter(Boolean).forEach(token => {
+        if (/^\s+$/.test(token)) element.append(document.createTextNode(token));
+        else {
+          const word = document.createElement('span');
+          word.textContent = token;
+          element.append(word);
+        }
+      });
     } else element.append(document.createTextNode(part));
   });
 }
@@ -175,7 +184,7 @@ export function createItemLabels(
       button.className = 'aleyan-iceberg__item-name';
       button.setAttribute('aria-expanded', 'false');
       button.setAttribute('aria-controls', `iceberg-${instanceId}-detail-${item.slug}`);
-      appendText(button, item.name);
+      appendText(button, item.name, true);
 
       const details = document.createElement('div');
       details.id = `iceberg-${instanceId}-detail-${item.slug}`;

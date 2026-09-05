@@ -118,7 +118,15 @@
   text-align: center;
   text-shadow: none;
   text-wrap: balance;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
   cursor: pointer;
+}
+
+.aleyan-iceberg__item-name > span,
+.aleyan-iceberg__item-name > code {
+  white-space: nowrap;
 }
 
 .aleyan-iceberg__item code {
