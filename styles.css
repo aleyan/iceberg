@@ -8,7 +8,6 @@
   isolation: isolate;
   min-width: 320px;
   overflow: hidden;
-  overscroll-behavior: contain;
   touch-action: pinch-zoom;
   container-type: inline-size;
   color-scheme: dark;
@@ -26,13 +25,9 @@
   display: block;
   width: 100%;
   height: 100%;
-  cursor: grab;
+  cursor: default;
   touch-action: pinch-zoom;
   background: transparent;
-}
-
-.aleyan-iceberg__canvas:active {
-  cursor: grabbing;
 }
 
 .aleyan-iceberg__loading {
