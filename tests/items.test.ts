@@ -9,7 +9,7 @@ test('reads all rows independently of the declared count and accepts new entries
   expect(parseItems(source.replace('item_count = 11', 'item_count = 1') + extra)).toHaveLength(items.length + 1);
 });
 
-test('orders depth by bucket and obscurity, leaving room around the water and beyond the ice', () => {
+test('orders depth by bucket and obscurity, leaving room around the water and filling the final view', () => {
   const placed = arrangeItems(items, -0.72, 2.5, -22);
   for (let i = 1; i < placed.length; i++) expect(placed[i].y).toBeLessThan(placed[i - 1].y);
   for (let bucket = 1; bucket <= 10; bucket++) {
@@ -25,6 +25,15 @@ test('orders depth by bucket and obscurity, leaving room around the water and be
   expect(Math.max(...placed.filter(p => p.item.obscurity_bucket === 2).map(p => p.y))).toBeLessThanOrEqual(-2.22);
   const abyss = placed.filter(p => p.item.obscurity_bucket === 10);
   expect(Math.max(...abyss.map(p => p.y)) - Math.min(...abyss.map(p => p.y))).toBeGreaterThan(0);
+  expect(Math.min(...abyss.map(p => p.y))).toBeGreaterThan(-26);
+});
+
+test('uses a camera-sized span for the deepest labels', () => {
+  const abyss = arrangeItems(items, -0.72, 2.5, -22, 1, 8)
+    .filter(p => p.item.obscurity_bucket === 10);
+  expect(Math.max(...abyss.map(p => p.y))).toBeLessThan(-22);
+  expect(Math.min(...abyss.map(p => p.y))).toBeGreaterThan(-30.4);
+  expect(Math.max(...abyss.map(p => p.y)) - Math.min(...abyss.map(p => p.y))).toBeGreaterThan(3.9);
 });
 
 test('can stretch the above-water label layout without moving submerged buckets', () => {

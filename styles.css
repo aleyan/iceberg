@@ -79,6 +79,10 @@
     width: 100%;
     animation: none;
   }
+
+  .aleyan-iceberg__descent-prompt {
+    transition: none;
+  }
 }
 
 /* Labels are projected only when the camera changes; water has no DOM loop. */
@@ -122,6 +126,8 @@
   word-break: normal;
   hyphens: none;
   cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .aleyan-iceberg__item-name > span,
@@ -183,6 +189,18 @@
   line-height: 1.65;
 }
 
+.aleyan-iceberg__item-detail-title {
+  margin: 0 0 12px;
+  color: #e7f2f8;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .aleyan-iceberg__item-details code {
   color: #c3efff;
   overflow-wrap: anywhere;
@@ -238,6 +256,48 @@
   pointer-events: none;
 }
 
+.aleyan-iceberg__descent-prompt {
+  position: absolute;
+  z-index: 4;
+  bottom: calc(
+    clamp(52px, 10%, 80px)
+    + var(--aleyan-iceberg-descent-prompt-viewport-offset, 0px)
+  );
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  width: min(32rem, calc(100% - 40px));
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: rgb(1 18 38 / 62%);
+  box-shadow: 0 4px 18px rgb(0 14 34 / 35%);
+  color: #e8f7ff;
+  font-size: clamp(13px, 1.8vw, 16px);
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 2px 8px #00142c, 0 1px 2px #00142c;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -8px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+
+.aleyan-iceberg__descent-prompt[hidden] {
+  display: none;
+}
+
+.aleyan-iceberg__descent-prompt--visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.aleyan-iceberg__descent-prompt-arrow {
+  margin-top: 3px;
+  font-size: 1.45em;
+  font-variant-emoji: text;
+  line-height: 1;
+}
+
 @container (max-width: 600px) {
   .aleyan-iceberg__item {
     width: 160px;
@@ -249,9 +309,21 @@
     font-size: 13px;
   }
 
+  .aleyan-iceberg__item-detail-title {
+    font-size: 13px;
+  }
+
   .aleyan-iceberg__hint {
     bottom: 12px;
     left: 14px;
     font-size: 10px;
+  }
+
+  .aleyan-iceberg__descent-prompt {
+    bottom: calc(
+      max(64px, calc(env(safe-area-inset-bottom, 0px) + 40px))
+      + var(--aleyan-iceberg-descent-prompt-viewport-offset, 0px)
+    );
+    font-size: 13px;
   }
 }

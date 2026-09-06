@@ -40,6 +40,7 @@ export function createItemLabels(
   options: {
     aboveWaterLabelStretch: number;
     ariaLabel: string;
+    deepestLabelSpan: () => number;
     initialItem?: string;
     syncUrl: boolean;
   },
@@ -157,6 +158,7 @@ export function createItemLabels(
       bounds.max.y,
       bounds.min.y,
       options.aboveWaterLabelStretch,
+      options.deepestLabelSpan(),
     ).map(({ item, y, angle }) => {
       direction.set(Math.sin(angle), 0, Math.cos(angle));
       const origin = new THREE.Vector3(center.x, y, center.z).addScaledVector(direction, radius);
@@ -194,6 +196,9 @@ export function createItemLabels(
       details.id = `iceberg-${instanceId}-detail-${item.slug}`;
       details.className = 'aleyan-iceberg__item-details';
       details.hidden = true;
+      const title = document.createElement('h3');
+      title.className = 'aleyan-iceberg__item-detail-title';
+      appendText(title, item.name);
       const description = document.createElement('p');
       appendText(description, item.short_description);
       const footer = document.createElement('div');
@@ -202,7 +207,7 @@ export function createItemLabels(
       source.href = item.url;
       source.target = '_blank';
       source.rel = 'noopener noreferrer';
-      source.textContent = 'Read source ↗';
+      source.textContent = 'Read source';
       source.setAttribute('aria-label', `Source for ${item.name.replaceAll('`', '')} (opens in a new tab)`);
       const dismiss = document.createElement('button');
       dismiss.type = 'button';
@@ -210,7 +215,7 @@ export function createItemLabels(
       dismiss.textContent = 'Close';
       dismiss.addEventListener('click', () => { close(); host.querySelector('canvas')?.focus({ preventScroll: true }); });
       footer.append(source, dismiss);
-      details.append(description, footer);
+      details.append(title, description, footer);
       element.append(button, details);
       element.addEventListener('pointerenter', event => {
         if (event.pointerType === 'touch') return;

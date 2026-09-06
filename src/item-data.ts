@@ -38,6 +38,7 @@ export function arrangeItems(
   top: number,
   bottom: number,
   aboveWaterLabelStretch = 1,
+  deepestLabelSpan?: number,
 ) {
   const depth = water - bottom;
   return Array.from({ length: 10 }, (_, index) => index + 1).flatMap(bucket => {
@@ -49,16 +50,17 @@ export function arrangeItems(
       const angle = curseRank / Math.max(1, group.length - 1) * Math.PI * (curseRank % 2 ? -1 : 1);
       // Keep labels away from the bright water rim. The exposed tip has less
       // surface area, so give it extra vertical room in the open sky. The
-      // abyss has no shell to distribute labels across, so use a readable
-      // line-height rather than squeezing the whole bucket into a short band.
+      // final bucket continues below the tip. Its span is supplied from the
+      // camera viewport so it fills the final view without extending it.
       const surfaceGap = 1;
       const surfaceSpan = Math.max(top - water, group.length * 0.48)
         * Math.max(0.25, aboveWaterLabelStretch);
       const underwaterGap = 1.5;
       const submergedSpan = Math.max(0, depth - underwaterGap);
-      const abyssSpan = Math.max(depth * 0.24, group.length * 0.82);
+      const abyssSpan = Math.max(0, deepestLabelSpan ?? depth * 0.16);
+      const abyssGap = abyssSpan * 0.05;
       const y = bucket === 1 ? water + surfaceGap + surfaceSpan * (1 - fraction)
-        : bucket === 10 ? bottom - 1 - abyssSpan * fraction
+        : bucket === 10 ? bottom - abyssGap - abyssSpan * fraction
         : water - underwaterGap - submergedSpan * ((bucket - 2 + fraction) / 8);
       return { item, y, angle };
     });
