@@ -1,4 +1,4 @@
-# Small development fixture. The real Python catalogue lives in aleyan.com.
+# Small development fixture. A complete catalogue belongs in the consuming app.
 schema_version = 1
 item_count = 11
 

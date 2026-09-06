@@ -47,11 +47,11 @@ export function createItemLabels(
 ) {
   const instanceId = ++labelSetId;
   const layer = document.createElement('section');
-  layer.className = 'aleyan-iceberg__item-layer';
+  layer.className = 'iceberg-viewer__item-layer';
   layer.setAttribute('aria-label', options.ariaLabel);
   host.append(layer);
   const status = document.createElement('div');
-  status.className = 'aleyan-iceberg__item-status';
+  status.className = 'iceberg-viewer__item-status';
   status.setAttribute('role', 'status');
   status.hidden = true;
   host.append(status);
@@ -179,7 +179,7 @@ export function createItemLabels(
         : new THREE.Vector3(center.x, y, center.z).addScaledVector(direction, fallbackRadius);
 
       const element = document.createElement('article');
-      element.className = 'aleyan-iceberg__item';
+      element.className = 'iceberg-viewer__item';
       element.hidden = true;
       element.dataset.slug = item.slug;
       element.dataset.bucket = String(item.obscurity_bucket);
@@ -187,22 +187,22 @@ export function createItemLabels(
       element.dataset.angle = String(angle);
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'aleyan-iceberg__item-name';
+      button.className = 'iceberg-viewer__item-name';
       button.setAttribute('aria-expanded', 'false');
       button.setAttribute('aria-controls', `iceberg-${instanceId}-detail-${item.slug}`);
       appendText(button, item.name, true);
 
       const details = document.createElement('div');
       details.id = `iceberg-${instanceId}-detail-${item.slug}`;
-      details.className = 'aleyan-iceberg__item-details';
+      details.className = 'iceberg-viewer__item-details';
       details.hidden = true;
       const title = document.createElement('h3');
-      title.className = 'aleyan-iceberg__item-detail-title';
+      title.className = 'iceberg-viewer__item-detail-title';
       appendText(title, item.name);
       const description = document.createElement('p');
       appendText(description, item.short_description);
       const footer = document.createElement('div');
-      footer.className = 'aleyan-iceberg__item-footer';
+      footer.className = 'iceberg-viewer__item-footer';
       const source = document.createElement('a');
       source.href = item.url;
       source.target = '_blank';
@@ -211,7 +211,7 @@ export function createItemLabels(
       source.setAttribute('aria-label', `Source for ${item.name.replaceAll('`', '')} (opens in a new tab)`);
       const dismiss = document.createElement('button');
       dismiss.type = 'button';
-      dismiss.className = 'aleyan-iceberg__item-close';
+      dismiss.className = 'iceberg-viewer__item-close';
       dismiss.textContent = 'Close';
       dismiss.addEventListener('click', () => { close(); host.querySelector('canvas')?.focus({ preventScroll: true }); });
       footer.append(source, dismiss);

@@ -74,16 +74,16 @@ export function mountIceberg(
   const overview = options.overview ?? false;
   const stillFrame = options.stillFrame ?? false;
   const assets = { ...defaultIcebergAssets, ...options.assets };
-  const addedHostClass = !host.classList.contains("aleyan-iceberg");
+  const addedHostClass = !host.classList.contains("iceberg-viewer");
   const previousAriaLabel = host.getAttribute("aria-label");
-  host.classList.add("aleyan-iceberg");
+  host.classList.add("iceberg-viewer");
   host.setAttribute(
     "aria-label",
     options.ariaLabel ?? "Interactive three-dimensional iceberg",
   );
 
   const canvas = document.createElement("canvas");
-  canvas.className = "aleyan-iceberg__canvas";
+  canvas.className = "iceberg-viewer__canvas";
   canvas.tabIndex = 0;
   canvas.setAttribute(
     "aria-label",
@@ -92,32 +92,32 @@ export function mountIceberg(
   );
 
   const hint = document.createElement("div");
-  hint.className = "aleyan-iceberg__hint";
+  hint.className = "iceberg-viewer__hint";
   hint.textContent = options.hint === false ? "" : options.hint ?? DEFAULT_HINT;
   hint.hidden = options.hint === false;
 
   const descentPrompt = document.createElement("div");
-  descentPrompt.className = "aleyan-iceberg__descent-prompt";
+  descentPrompt.className = "iceberg-viewer__descent-prompt";
   descentPrompt.setAttribute("aria-hidden", "true");
   const descentPromptText = document.createElement("span");
   descentPromptText.textContent = options.descentPrompt === false
     ? ""
     : options.descentPrompt ?? "Scroll down below the water line to descend";
   const descentPromptArrow = document.createElement("span");
-  descentPromptArrow.className = "aleyan-iceberg__descent-prompt-arrow";
+  descentPromptArrow.className = "iceberg-viewer__descent-prompt-arrow";
   descentPromptArrow.setAttribute("aria-hidden", "true");
   descentPromptArrow.textContent = "↓︎";
   descentPrompt.append(descentPromptText, descentPromptArrow);
   descentPrompt.hidden = options.descentPrompt === false;
 
   const loading = document.createElement("div");
-  loading.className = "aleyan-iceberg__loading";
+  loading.className = "iceberg-viewer__loading";
   loading.setAttribute("role", "status");
   loading.setAttribute("aria-live", "polite");
   const loadingBar = document.createElement("span");
-  loadingBar.className = "aleyan-iceberg__loading-bar";
+  loadingBar.className = "iceberg-viewer__loading-bar";
   const loadingText = document.createElement("span");
-  loadingText.className = "aleyan-iceberg__sr-only";
+  loadingText.className = "iceberg-viewer__sr-only";
   loadingText.textContent = "Loading iceberg";
   loading.append(loadingBar, loadingText);
   host.append(canvas, hint, descentPrompt, loading);
@@ -224,7 +224,7 @@ export function mountIceberg(
     if (descentPromptDismissed) return;
     descentPromptDismissed = true;
     clearTimeout(descentPromptTimer);
-    descentPrompt.classList.remove("aleyan-iceberg__descent-prompt--visible");
+    descentPrompt.classList.remove("iceberg-viewer__descent-prompt--visible");
     descentPrompt.setAttribute("aria-hidden", "true");
   }
 
@@ -238,10 +238,10 @@ export function mountIceberg(
       const hostBounds = host.getBoundingClientRect();
       if (hostBounds.top >= viewportBottom || hostBounds.bottom <= viewportTop) return;
       descentPrompt.style.setProperty(
-        "--aleyan-iceberg-descent-prompt-viewport-offset",
+        "--iceberg-descent-prompt-viewport-offset",
         `${Math.max(0, hostBounds.bottom - viewportBottom)}px`,
       );
-      descentPrompt.classList.add("aleyan-iceberg__descent-prompt--visible");
+      descentPrompt.classList.add("iceberg-viewer__descent-prompt--visible");
       descentPrompt.setAttribute("aria-hidden", "false");
     }, 5000);
   }
@@ -588,7 +588,7 @@ export function mountIceberg(
       framingBounds = icebergBounds.clone();
       frameIcebergForScrolling(icebergBounds);
       itemLabels.setIceberg(icebergRoot, icebergBounds, waterLevel);
-      loading.classList.add("aleyan-iceberg__loading--complete");
+      loading.classList.add("iceberg-viewer__loading--complete");
       loadingText.textContent = "Iceberg loaded";
       loadingRemoveTimer = setTimeout(() => loading.remove(), 600);
       scheduleDescentPrompt();
@@ -597,7 +597,7 @@ export function mountIceberg(
     undefined,
     (error) => {
       if (disposed) return;
-      loading.classList.add("aleyan-iceberg__loading--complete");
+      loading.classList.add("iceberg-viewer__loading--complete");
       loadingText.textContent = "Unable to load the iceberg";
       rejectReady(error);
     },
@@ -716,7 +716,7 @@ export function mountIceberg(
     hint.remove();
     descentPrompt.remove();
     loading.remove();
-    if (addedHostClass) host.classList.remove("aleyan-iceberg");
+    if (addedHostClass) host.classList.remove("iceberg-viewer");
     if (previousAriaLabel === null) host.removeAttribute("aria-label");
     else host.setAttribute("aria-label", previousAriaLabel);
   }
