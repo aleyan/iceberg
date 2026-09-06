@@ -182,14 +182,26 @@ runtime assets. It also checks that development files are excluded. For version
 
 Use this command instead of relying on `prepack`: Bun 1.3.8 can omit that hook
 when packing, leaving `dist/` missing or stale. Install the verified tarball in
-a consuming application and check its production build before publishing that
-same artifact:
+a consuming application and check its production build before releasing.
 
-```sh
-bun publish ./aleyan-iceberg-0.1.1.tgz --access public
-```
+### Publish through GitHub Releases
 
-Publishing a tarball does not rebuild it or rerun lifecycle hooks.
+One-time setup: in the npm package's **Settings → Trusted Publisher**, select
+GitHub Actions and enter user `aleyan`, repository `iceberg`, and workflow
+filename `publish.yml`. Leave the environment blank and allow `npm publish`.
+See the [npm trusted publishing guide](https://docs.npmjs.com/trusted-publishers/).
+No npm token or GitHub secret is needed.
+
+Commit and push the release changes, including the workflow, then create a
+GitHub release targeting that commit with a tag matching `package.json`
+(for example, `v0.1.1`). Publishing the release triggers `publish.yml`; saving
+a draft does not publish to npm.
+
+The workflow checks the version, runs `bun run pack:release`, and publishes
+the verified tarball using npm's OIDC authentication with automatic provenance.
+Bun handles dependency installation, tests, and builds; npm is used only to
+publish. Stable releases use the `latest` npm tag. Prerelease versions must be
+marked as prereleases on GitHub and use the `next` npm tag.
 
 ## Assets
 
