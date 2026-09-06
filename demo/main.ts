@@ -13,8 +13,8 @@ mountIceberg(host, {
   assets: {
     model: "/assets/models/iceberg-web.glb",
     environment: "/assets/environment/ocean-panorama.hdr",
-    sky: "/assets/environment/polar-cirrus.jpg",
-    relief: "/assets/textures/glacial-relief.jpg",
+    sky: "/assets/environment/polar-cirrus.webp",
+    relief: "/assets/textures/glacial-relief.webp",
   },
   overview: params.has("overview"),
   stillFrame: params.has("still"),

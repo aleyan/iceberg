@@ -47,8 +47,8 @@ export interface IcebergController {
 export const defaultIcebergAssets: Readonly<IcebergAssets> = Object.freeze({
   model: new URL("../assets/models/iceberg-web.glb", import.meta.url).href,
   environment: new URL("../assets/environment/ocean-panorama.hdr", import.meta.url).href,
-  sky: new URL("../assets/environment/polar-cirrus.jpg", import.meta.url).href,
-  relief: new URL("../assets/textures/glacial-relief.jpg", import.meta.url).href,
+  sky: new URL("../assets/environment/polar-cirrus.webp", import.meta.url).href,
+  relief: new URL("../assets/textures/glacial-relief.webp", import.meta.url).href,
 });
 
 const DEFAULT_HINT = "Scroll to descend · Drag to turn · Select a name to keep it open";

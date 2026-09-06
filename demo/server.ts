@@ -11,13 +11,13 @@ Bun.serve({
       Bun.file(new URL("../assets/environment/ocean-panorama.hdr", import.meta.url)),
       { headers: { "content-type": "image/vnd.radiance" } },
     ),
-    "/assets/environment/polar-cirrus.jpg": new Response(
-      Bun.file(new URL("../assets/environment/polar-cirrus.jpg", import.meta.url)),
-      { headers: { "content-type": "image/jpeg" } },
+    "/assets/environment/polar-cirrus.webp": new Response(
+      Bun.file(new URL("../assets/environment/polar-cirrus.webp", import.meta.url)),
+      { headers: { "content-type": "image/webp" } },
     ),
-    "/assets/textures/glacial-relief.jpg": new Response(
-      Bun.file(new URL("../assets/textures/glacial-relief.jpg", import.meta.url)),
-      { headers: { "content-type": "image/jpeg" } },
+    "/assets/textures/glacial-relief.webp": new Response(
+      Bun.file(new URL("../assets/textures/glacial-relief.webp", import.meta.url)),
+      { headers: { "content-type": "image/webp" } },
     ),
   },
   development: true,
