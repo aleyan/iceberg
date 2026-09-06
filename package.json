@@ -36,6 +36,7 @@
     "check": "bun run typecheck && bun test && bun run check:demo",
     "check:demo": "bun build demo/main.ts --target browser --outdir dist-demo",
     "dev": "bun --hot demo/server.ts",
+    "pack:release": "bun scripts/pack.ts",
     "prepack": "bun run check && bun run build",
     "test": "bun test",
     "typecheck": "tsc --noEmit"

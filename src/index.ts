@@ -7,6 +7,7 @@ import { createIceMaterial } from "./ice-material.js";
 import { createItemLabels } from "./item-labels.js";
 import { createOcean } from "./ocean.js";
 import type { IcebergItem } from "./item-data.js";
+import { createLifecycle } from "./lifecycle.js";
 
 export {
   arrangeItems,
@@ -40,7 +41,7 @@ export interface IcebergOptions {
 }
 
 export interface IcebergController {
-  /** Resolves when the GLB is loaded, framed, and populated with labels. */
+  /** Resolves when populated; rejects on loading failure or with AbortError if disposed first. */
   readonly ready: Promise<void>;
   /** Stops rendering, removes listeners and generated DOM, and releases GPU resources. */
   dispose(): void;
@@ -69,6 +70,22 @@ export function mountIceberg(
     throw new TypeError("mountIceberg requires an HTMLElement host.");
   }
 
+  const lifecycle = createLifecycle();
+  try {
+    return initializeIceberg(host, options, lifecycle);
+  } catch (error) {
+    lifecycle.fail(error);
+    throw error;
+  }
+}
+
+function initializeIceberg(
+  host: HTMLElement,
+  options: IcebergOptions,
+  lifecycle: ReturnType<typeof createLifecycle>,
+): IcebergController {
+  const { ready, resolveReady, onCleanup, dispose } = lifecycle;
+
   const waterLevel = options.waterLevel ?? -0.72;
   const underwaterStretch = THREE.MathUtils.clamp(options.underwaterStretch ?? 2, 1, 4);
   const overview = options.overview ?? false;
@@ -76,6 +93,11 @@ export function mountIceberg(
   const assets = { ...defaultIcebergAssets, ...options.assets };
   const addedHostClass = !host.classList.contains("iceberg-viewer");
   const previousAriaLabel = host.getAttribute("aria-label");
+  onCleanup(() => {
+    if (addedHostClass) host.classList.remove("iceberg-viewer");
+    if (previousAriaLabel === null) host.removeAttribute("aria-label");
+    else host.setAttribute("aria-label", previousAriaLabel);
+  });
   host.classList.add("iceberg-viewer");
   host.setAttribute(
     "aria-label",
@@ -121,19 +143,22 @@ export function mountIceberg(
   loadingText.textContent = "Loading iceberg";
   loading.append(loadingBar, loadingText);
   host.append(canvas, hint, descentPrompt, loading);
+  onCleanup(() => {
+    canvas.remove();
+    hint.remove();
+    descentPrompt.remove();
+    loading.remove();
+  });
 
-  let disposed = false;
   let loadingRemoveTimer: ReturnType<typeof setTimeout> | undefined;
   let descentPromptTimer: ReturnType<typeof setTimeout> | undefined;
+  onCleanup(() => {
+    clearTimeout(loadingRemoveTimer);
+    clearTimeout(descentPromptTimer);
+  });
   let descentPromptDismissed = false;
   let width = 1;
   let height = 1;
-  let resolveReady!: () => void;
-  let rejectReady!: (reason: unknown) => void;
-  const ready = new Promise<void>((resolve, reject) => {
-    resolveReady = resolve;
-    rejectReady = reject;
-  });
 
   const scene = new THREE.Scene();
   scene.background = null;
@@ -144,6 +169,10 @@ export function mountIceberg(
     alpha: true,
     powerPreference: "high-performance",
   });
+  onCleanup(() => {
+    renderer.setAnimationLoop(null);
+    renderer.dispose();
+  });
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -153,15 +182,27 @@ export function mountIceberg(
   renderer.shadowMap.autoUpdate = false;
 
   const pmrem = new THREE.PMREMGenerator(renderer);
+  onCleanup(() => pmrem.dispose());
   pmrem.compileEquirectangularShader();
-  let environmentTarget = pmrem.fromScene(new RoomEnvironment(), 0.04);
+  const room = new RoomEnvironment();
+  let environmentTarget: THREE.WebGLRenderTarget;
+  try {
+    environmentTarget = pmrem.fromScene(room, 0.04);
+  } finally {
+    room.dispose();
+  }
   let panoramaTexture: THREE.DataTexture | null = null;
+  onCleanup(() => {
+    panoramaTexture?.dispose();
+    environmentTarget.dispose();
+    scene.environment = null;
+  });
   scene.environment = environmentTarget.texture;
 
   new HDRLoader().load(
     assets.environment,
     (texture) => {
-      if (disposed) {
+      if (lifecycle.disposed) {
         texture.dispose();
         return;
       }
@@ -177,7 +218,7 @@ export function mountIceberg(
     },
     undefined,
     (error) => {
-      if (!disposed) console.warn("Unable to load the HDR environment", error);
+      if (!lifecycle.disposed) console.warn("Unable to load the HDR environment", error);
       pmrem.dispose();
     },
   );
@@ -231,7 +272,7 @@ export function mountIceberg(
   function scheduleDescentPrompt() {
     if (options.descentPrompt === false || descentPromptDismissed) return;
     descentPromptTimer = setTimeout(() => {
-      if (disposed || descentPromptDismissed || !cameraRail.ready) return;
+      if (lifecycle.disposed || descentPromptDismissed || !cameraRail.ready) return;
       if (Math.abs(cameraRail.desiredY - cameraRail.maxY) > 0.01) return;
       const viewportTop = window.visualViewport?.offsetTop ?? 0;
       const viewportBottom = viewportTop + (window.visualViewport?.height ?? window.innerHeight);
@@ -373,10 +414,23 @@ export function mountIceberg(
   host.addEventListener("pointerup", endTouchNavigation);
   host.addEventListener("pointercancel", endTouchNavigation);
   host.addEventListener("click", preventDraggedTouchClick, true);
+  onCleanup(() => {
+    canvas.removeEventListener("pointerdown", beginViewRotation);
+    canvas.removeEventListener("pointermove", updateViewRotation);
+    canvas.removeEventListener("pointerup", endViewRotation);
+    canvas.removeEventListener("pointercancel", endViewRotation);
+    canvas.removeEventListener("lostpointercapture", endViewRotation);
+    host.removeEventListener("pointerdown", beginTouchNavigation);
+    host.removeEventListener("pointermove", updateTouchNavigation);
+    host.removeEventListener("pointerup", endTouchNavigation);
+    host.removeEventListener("pointercancel", endTouchNavigation);
+    host.removeEventListener("click", preventDraggedTouchClick, true);
+  });
 
   const hemi = new THREE.HemisphereLight(0xc6e3ff, 0x061431, 0.3);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff7e9, 2.8);
+  onCleanup(() => sun.shadow.map?.dispose());
   sun.position.set(-7, 9, 6);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -389,9 +443,12 @@ export function mountIceberg(
   scene.add(rim);
 
   const iceMaterial = createIceMaterial(waterLevel, underwaterStretch, assets.relief);
+  onCleanup(() => iceMaterial.dispose());
   const ocean = createOcean(scene, waterLevel, assets.sky, overview);
+  onCleanup(() => ocean.dispose());
   const drawingBufferSize = new THREE.Vector2();
   const icebergGeometries = new Set<THREE.BufferGeometry>();
+  onCleanup(() => icebergGeometries.forEach((geometry) => geometry.dispose()));
 
   function stretchUnderwaterGeometry(mesh: THREE.Mesh) {
     mesh.updateWorldMatrix(true, false);
@@ -501,6 +558,7 @@ export function mountIceberg(
     cameraRail.desiredY = nextY;
   }
   host.addEventListener("wheel", handleIcebergScroll, { passive: false });
+  onCleanup(() => host.removeEventListener("wheel", handleIcebergScroll));
 
   const itemLabels = createItemLabels(
     host,
@@ -535,6 +593,7 @@ export function mountIceberg(
     },
   );
 
+  onCleanup(() => itemLabels.dispose());
   function handleCanvasKeydown(event: KeyboardEvent) {
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
@@ -550,11 +609,12 @@ export function mountIceberg(
     }
   }
   canvas.addEventListener("keydown", handleCanvasKeydown);
+  onCleanup(() => canvas.removeEventListener("keydown", handleCanvasKeydown));
 
   new GLTFLoader().load(
     assets.model,
     (gltf) => {
-      if (disposed) return;
+      if (lifecycle.disposed) return;
       icebergRoot.add(gltf.scene);
       icebergRoot.updateWorldMatrix(true, true);
       gltf.scene.traverse((child) => {
@@ -596,14 +656,12 @@ export function mountIceberg(
     },
     undefined,
     (error) => {
-      if (disposed) return;
-      loading.classList.add("iceberg-viewer__loading--complete");
-      loadingText.textContent = "Unable to load the iceberg";
-      rejectReady(error);
+      if (!lifecycle.disposed) lifecycle.fail(error);
     },
   );
 
   const timer = new THREE.Timer();
+  onCleanup(() => timer.dispose());
   timer.connect(document);
   let lastFrameTimestamp = performance.now();
 
@@ -676,50 +734,11 @@ export function mountIceberg(
     renderFrame(performance.now());
   }
   const resizeObserver = new ResizeObserver(resize);
+  onCleanup(() => resizeObserver.disconnect());
   resizeObserver.observe(host);
   resize();
 
   renderer.setAnimationLoop(renderFrame);
-
-  function dispose() {
-    if (disposed) return;
-    disposed = true;
-    clearTimeout(loadingRemoveTimer);
-    clearTimeout(descentPromptTimer);
-    resizeObserver.disconnect();
-    renderer.setAnimationLoop(null);
-    timer.dispose();
-    host.removeEventListener("wheel", handleIcebergScroll);
-    host.removeEventListener("pointerdown", beginTouchNavigation);
-    host.removeEventListener("pointermove", updateTouchNavigation);
-    host.removeEventListener("pointerup", endTouchNavigation);
-    host.removeEventListener("pointercancel", endTouchNavigation);
-    host.removeEventListener("click", preventDraggedTouchClick, true);
-    itemLabels.dispose();
-    canvas.removeEventListener("keydown", handleCanvasKeydown);
-    canvas.removeEventListener("pointerdown", beginViewRotation);
-    canvas.removeEventListener("pointermove", updateViewRotation);
-    canvas.removeEventListener("pointerup", endViewRotation);
-    canvas.removeEventListener("pointercancel", endViewRotation);
-    canvas.removeEventListener("lostpointercapture", endViewRotation);
-    icebergGeometries.forEach((geometry) => geometry.dispose());
-    ocean.dispose();
-    iceMaterial.dispose();
-    sun.shadow.map?.dispose();
-    panoramaTexture?.dispose();
-    environmentTarget.dispose();
-    pmrem.dispose();
-    scene.background = null;
-    scene.environment = null;
-    renderer.dispose();
-    canvas.remove();
-    hint.remove();
-    descentPrompt.remove();
-    loading.remove();
-    if (addedHostClass) host.classList.remove("iceberg-viewer");
-    if (previousAriaLabel === null) host.removeAttribute("aria-label");
-    else host.setAttribute("aria-label", previousAriaLabel);
-  }
 
   return { ready, dispose };
 }

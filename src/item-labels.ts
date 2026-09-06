@@ -49,12 +49,10 @@ export function createItemLabels(
   const layer = document.createElement('section');
   layer.className = 'iceberg-viewer__item-layer';
   layer.setAttribute('aria-label', options.ariaLabel);
-  host.append(layer);
   const status = document.createElement('div');
   status.className = 'iceberg-viewer__item-status';
   status.setAttribute('role', 'status');
   status.hidden = true;
-  host.append(status);
   const items = [...sourceItems];
   let labels: Label[] = [];
   let mesh: THREE.Object3D | undefined;
@@ -256,6 +254,9 @@ export function createItemLabels(
   function onKey(event: KeyboardEvent) {
     if (event.key === 'Escape') close();
   }
+  // Finish initialization before attaching DOM, so a failed constructor (for
+  // example ResizeObserver) cannot leave an unowned layer in the host.
+  host.append(layer, status);
   if (options.syncUrl) window.addEventListener('popstate', restoreUrl);
   window.addEventListener('keydown', onKey);
 
