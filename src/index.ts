@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
+import { createStretchedIcebergGeometry } from "./ice-geometry.js";
 import { createIceMaterial } from "./ice-material.js";
 import { createItemLabels } from "./item-labels.js";
 import { createOcean } from "./ocean.js";
@@ -314,28 +315,14 @@ export function mountIceberg(
   const icebergGeometries = new Set<THREE.BufferGeometry>();
 
   function stretchUnderwaterGeometry(mesh: THREE.Mesh) {
-    const geometry = mesh.geometry.clone();
-    const position = geometry.getAttribute("position");
-    if (!(position instanceof THREE.BufferAttribute)) {
-      geometry.dispose();
-      return;
-    }
     mesh.updateWorldMatrix(true, false);
-    const localToWorld = mesh.matrixWorld.clone();
-    const worldToLocal = localToWorld.clone().invert();
-    const vertex = new THREE.Vector3();
-    for (let index = 0; index < position.count; index += 1) {
-      vertex.fromBufferAttribute(position, index).applyMatrix4(localToWorld);
-      if (vertex.y < waterLevel) {
-        vertex.y = waterLevel + (vertex.y - waterLevel) * underwaterStretch;
-      }
-      vertex.applyMatrix4(worldToLocal);
-      position.setXYZ(index, vertex.x, vertex.y, vertex.z);
-    }
-    position.needsUpdate = true;
-    geometry.computeVertexNormals();
-    geometry.computeBoundingBox();
-    geometry.computeBoundingSphere();
+    const geometry = createStretchedIcebergGeometry(
+      mesh.geometry,
+      mesh.matrixWorld.clone(),
+      waterLevel,
+      underwaterStretch,
+    );
+    if (!geometry) return;
     mesh.geometry = geometry;
     icebergGeometries.add(geometry);
   }
@@ -371,7 +358,11 @@ export function mountIceberg(
       : waterLevel + halfViewHeight * 0.5;
     const outwardX = Math.sin(cameraOrbit.yaw);
     const outwardZ = Math.cos(cameraOrbit.yaw);
-    const labelNdcLimit = Math.max(0.1, 1 - 56 / height);
+    // Reserve enough room for the label's center and its 16px negative
+    // offset. NDC spans two screen halves, so a pixel inset needs a factor
+    // of two here.
+    const topLabelCenterInset = 72;
+    const labelNdcLimit = Math.max(0.1, 1 - topLabelCenterInset * 2 / height);
     const labelFocusY = itemPositions.length > 0
       ? Math.max(...itemPositions.map(position => {
           const outwardDepth = (position.x - center.x) * outwardX

@@ -22,7 +22,7 @@ test('orders depth by bucket and obscurity, leaving room around the water and be
   expect(placed.filter(p => p.item.obscurity_bucket === 1).every(p => p.y > -0.72)).toBe(true);
   expect(placed.filter(p => p.item.obscurity_bucket === 10).every(p => p.y < -22)).toBe(true);
   expect(Math.min(...placed.filter(p => p.item.obscurity_bucket === 1).map(p => p.y))).toBeGreaterThanOrEqual(0.28);
-  expect(Math.max(...placed.filter(p => p.item.obscurity_bucket === 2).map(p => p.y))).toBeLessThanOrEqual(-2.92);
+  expect(Math.max(...placed.filter(p => p.item.obscurity_bucket === 2).map(p => p.y))).toBeLessThanOrEqual(-2.22);
   const abyss = placed.filter(p => p.item.obscurity_bucket === 10);
   expect(Math.max(...abyss.map(p => p.y)) - Math.min(...abyss.map(p => p.y))).toBeGreaterThan(0);
 });

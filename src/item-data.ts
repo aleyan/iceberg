@@ -54,7 +54,7 @@ export function arrangeItems(
       const surfaceGap = 1;
       const surfaceSpan = Math.max(top - water, group.length * 0.48)
         * Math.max(0.25, aboveWaterLabelStretch);
-      const underwaterGap = 2.2;
+      const underwaterGap = 1.5;
       const submergedSpan = Math.max(0, depth - underwaterGap);
       const abyssSpan = Math.max(depth * 0.24, group.length * 0.82);
       const y = bucket === 1 ? water + surfaceGap + surfaceSpan * (1 - fraction)
