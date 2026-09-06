@@ -342,6 +342,8 @@ export function mountIceberg(
 
   let framingBounds: THREE.Box3 | null = null;
   let itemMinimumY: number | null = null;
+  let itemMaximumY: number | null = null;
+  let itemPositions: readonly THREE.Vector3[] = [];
 
   function frameIcebergForScrolling(icebergBounds: THREE.Box3, preserveDepth = false) {
     const previousDepth = cameraRail.ready
@@ -364,9 +366,23 @@ export function mountIceberg(
         )
       : horizontalRadius / Math.sin(horizontalFov / 2) * 1.1;
     const halfViewHeight = distance * Math.tan(verticalFov / 2);
-    const initialFocusY = overview
+    const meshFocusY = overview
       ? center.y + icebergSize.y * 0.035
       : waterLevel + halfViewHeight * 0.5;
+    const outwardX = Math.sin(cameraOrbit.yaw);
+    const outwardZ = Math.cos(cameraOrbit.yaw);
+    const labelNdcLimit = Math.max(0.1, 1 - 56 / height);
+    const labelFocusY = itemPositions.length > 0
+      ? Math.max(...itemPositions.map(position => {
+          const outwardDepth = (position.x - center.x) * outwardX
+            + (position.z - center.z) * outwardZ;
+          const viewDepth = Math.max(camera.near, distance - outwardDepth);
+          return position.y - viewDepth * Math.tan(verticalFov / 2) * labelNdcLimit;
+        }))
+      : itemMaximumY === null
+        ? meshFocusY
+        : itemMaximumY - halfViewHeight * 0.8;
+    const initialFocusY = Math.max(meshFocusY, labelFocusY);
     cameraTarget.set(center.x, initialFocusY, center.z);
     cameraOrbit.distance = distance;
     camera.far = Math.max(12000, distance + icebergSize.length() * 2);
@@ -426,8 +442,10 @@ export function mountIceberg(
         cameraOrbit.pitch = 0;
       }
     },
-    (minimum) => {
+    (minimum, maximum, positions) => {
       itemMinimumY = minimum;
+      itemMaximumY = maximum;
+      itemPositions = positions;
       if (framingBounds) frameIcebergForScrolling(framingBounds, true);
     },
     {

@@ -32,7 +32,11 @@ export function createItemLabels(
   scene: THREE.Scene,
   sourceItems: readonly IcebergItem[],
   navigate: (position: THREE.Vector3, angle: number, instant: boolean) => void,
-  setVerticalRange: (minimum: number, maximum: number) => void,
+  setVerticalRange: (
+    minimum: number,
+    maximum: number,
+    positions: readonly THREE.Vector3[],
+  ) => void,
   options: {
     aboveWaterLabelStretch: number;
     ariaLabel: string;
@@ -237,6 +241,7 @@ export function createItemLabels(
     setVerticalRange(
       Math.min(...labels.map(label => label.position.y)),
       Math.max(...labels.map(label => label.position.y)),
+      labels.map(label => label.position.clone()),
     );
     rebuildText();
     restoreUrl();
