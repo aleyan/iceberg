@@ -6,8 +6,10 @@ export interface FrameSample { interval: number; work: number }
 export interface BrowserFixture {
   controller: IcebergController;
   ready: boolean;
-  readonly visualReady: boolean;
+  readonly assetsLoaded: boolean;
   readonly frameCount: number;
+  resumeRendering(): Promise<void>;
+  pauseRendering(): void;
   startMeasurement(): void;
   endMeasurement(): FrameSample[];
 }
@@ -17,44 +19,28 @@ declare global { interface Window { icebergTest: BrowserFixture } }
 // after the renderer has stopped. No production instrumentation is required.
 const params = new URLSearchParams(location.search);
 const requestFrame = window.requestAnimationFrame.bind(window);
-let lastVisualFrame = -Infinity;
 let renderedFrames = 0;
 let recording = false;
-let paused = false;
 let previous = 0;
 let samples: FrameSample[] = [];
 let assetsLoaded = false;
-let visualReady = false;
-let previousProjection = '';
-let stableFrames = 0;
-let stableSince = 0;
+let paused = false;
+let pendingFrame: FrameRequestCallback | undefined;
+let benchmarkPrepared = false;
+let projection = '', stable = 0;
 window.requestAnimationFrame = callback => requestFrame(timestamp => {
-  if (paused) return;
-  // Screenshot poses are static deep links. Limit their submission rate so a
-  // software WebGL backend cannot accumulate a long queue before readback.
-  // Interaction and performance fixtures never use this visual-only flag.
-  if (params.has('visual') && timestamp - lastVisualFrame < 200) {
-    window.requestAnimationFrame(callback);
-    return;
-  }
-  lastVisualFrame = timestamp;
+  if (paused) { pendingFrame = callback; return; }
   const start = performance.now();
   callback(timestamp);
   renderedFrames++;
-  if (params.has('visual') && assetsLoaded) {
-    // Observe stability as frames finish, rather than starting another series
-    // of frame waits after several Playwright round trips. Stop submitting
-    // identical WebGL frames before the driver asks for readiness/screenshots.
-    const projection = [...document.querySelectorAll<HTMLElement>('.iceberg-viewer__item:not([hidden])')]
+  if (assetsLoaded && params.has('benchmark') && !benchmarkPrepared) {
+    const current = [...document.querySelectorAll<HTMLElement>('.iceberg-viewer__item:not([hidden])')]
       .map(e => e.dataset.slug + ':' + e.style.cssText).join('|');
-    if (projection && projection === previousProjection) stableFrames++;
-    else { stableFrames = 0; stableSince = performance.now(); }
-    previousProjection = projection;
-    if (stableFrames >= 2 && performance.now() - stableSince >= 150) {
-      paused = true;
-      visualReady = true;
-    }
+    stable = current && current === projection ? stable + 1 : 0;
+    projection = current;
+    if (stable >= 2) { benchmarkPrepared = true; paused = true; }
   }
+  if (assetsLoaded) window.icebergTest.ready = !params.has('benchmark') || benchmarkPrepared;
   if (recording) {
     if (previous) samples.push({ interval: timestamp - previous, work: performance.now() - start });
     previous = timestamp;
@@ -102,8 +88,18 @@ const controller = mountIceberg(host, {
 });
 window.icebergTest = {
   controller, ready: false,
-  get visualReady() { return visualReady; },
+  get assetsLoaded() { return assetsLoaded; },
   get frameCount() { return renderedFrames; },
+  async resumeRendering() {
+    if (!paused) return;
+    // Let the queued animation callback park before restarting the real RAF.
+    await new Promise<void>(resolve => requestFrame(() => resolve()));
+    paused = false;
+    const callback = pendingFrame;
+    pendingFrame = undefined;
+    if (callback) window.requestAnimationFrame(callback);
+  },
+  pauseRendering() { paused = true; },
   startMeasurement() { samples = []; previous = 0; recording = true; },
   endMeasurement() { recording = false; return samples; },
 };
@@ -111,6 +107,3 @@ await controller.ready;
 await assetsReady;
 await document.fonts.ready;
 assetsLoaded = true;
-const readyFrame = renderedFrames;
-while (renderedFrames <= readyFrame) await new Promise(resolve => setTimeout(resolve, 25));
-window.icebergTest.ready = true;

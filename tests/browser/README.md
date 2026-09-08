@@ -72,23 +72,45 @@ The Chrome image uses emulation on Apple Silicon; the Firefox image uses
 emulation on Intel hosts. This can be slower than native execution. Browser revisions, the
 Dockerfile, and the CI image must be updated together.
 
-Screenshot tests freeze the water's time and cap visual-only frame submissions at
-5 Hz. After assets/fonts load, the fixture verifies unchanged label projections
-and card offsets across three rendered frames, then stops scheduling frames
-immediately. Readiness also waits for the loading indicator to disappear. This
-happens inside the fixture: separate browser commands must not keep an already
-stable scene rendering while they check readiness. The screenshots assert that
-the frame count stays fixed during capture. Underwater captures start from a
-fresh deep-linked mount so the camera pose is exact. No water-idle timer is
-involved; `stillFrame` freezes shader time but does not itself stop rendering.
-Layout and performance tests never cap or pause the renderer; performance tests always animate the water.
+Layout and screenshot tests use Playwright's controlled clock. They advance
+camera easing and the loading-indicator fade directly, then stop time between
+commands. Screenshots still render the real scene at full resolution. Existing
+Chrome desktop Orbit/List baselines include a hover preview; those tests now
+select that hover state explicitly instead of relying on Xvfb's initial pointer.
+
+A worker retains one loaded scene per viewport/device-scale configuration.
+Before every case, `openIceberg` resets the embedding layout, page scroll,
+selection, focus, view, and orientation through public APIs/events. It waits for
+the renderer's resize observer before rebuilding placements, including width
+changes caused by classic scrollbars. Disposal is still tested; the following
+case reloads the disposed scene. Cases remain individually runnable, with
+separate traces and assertions. Reusing assets avoids repeating model decoding,
+shader initialization, and glyph atlas setup for each keyboard or menu check.
+
+The frame-rate regression compares dense and sparse animation callbacks through
+the production render loop. Camera easing uses actual elapsed time; the separate
+inertia integration retains its bounded step. Performance tests use fresh
+contexts with real time and animated water.
 
 ## Performance
 
-Each browser/view runs alone with one worker. After warming the scene, the test
-sends 90 native wheel events across the names and records the actual renderer's
-animation callbacks. It checks that labels moved and rendering continued, then
-attaches every sample and a JSON summary to the report.
+Each browser/view runs alone with one worker and real timers. An idle window
+collects at least 20 frame samples so its p95 is not estimated from a handful
+of startup frames. A native wheel probe records the driver's
+acknowledgement latency, then an in-page stream dispatches bubbling, cancelable
+wheel events at the element under the pointer. The stream sends the same total
+900px of wheel input through the real viewer handlers while the full scene renders.
+This keeps protocol round trips out of the hot loop; native keyboard, wheel,
+scroll chaining, and touch behavior are exercised by the layout suite.
+
+The scrolling window lasts at least two seconds and collects more than 30 frames.
+Slow software renderers get a longer window based on their measured idle frame
+interval. Reports include real elapsed time, event count, native acknowledgement
+latency, and every frame sample. A stalled renderer fails within 20 seconds.
+The fixture parks rendering after initial setup and after the measurement, so
+setup and reporting do not run a background render loop. It resumes
+the real RAF loop for both sampling windows and the native probe. No fake time
+or renderer mocks are used for performance measurements.
 
 The local hardware profile requires p95 frame intervals below 34 ms, no frame
 above 200 ms, p95 callback work below 16 ms, and fewer than 5% of intervals above
@@ -112,16 +134,23 @@ an affected user's device.
 ## CI and failures
 
 CI runs units/typechecks/build plus two isolated container jobs per browser
-profile: interactions/screenshots and performance. This keeps software Chrome's
-native wheel acknowledgements from exhausting the interaction job's deadline,
-and each performance run still has its own runner. There are no
+profile: interactions/screenshots and performance. Each complete test command
+has a 60-second deadline, and each performance run has its own runner. There are no
 automatic retries to hide intermittent failures. Reports, performance JSON,
 failure screenshots, and traces are retained as artifacts for 14 days.
 Traces retain DOM snapshots, console, and network events; continuous trace
 screenshots are disabled because GPU readbacks distort performance measurements.
-CI allows 20 seconds for camera settling and four minutes per multi-step test;
-native runs retain five-second settling and 45-second test deadlines. These
-functional-test deadlines are separate from the measured frame budgets above.
+Real-time camera-settling waits allow 20 seconds in CI and five seconds locally;
+layout/visual tests advance their controlled clock instead. The test deadlines
+are separate from the measured frame budgets above.
+
+Every normal run writes `timings.json` alongside the test results. It includes
+wall-clock duration for the complete command, each case, and each browser API
+call, so time spent in loading, input, rendering, or clock advancement can be
+inspected without inferring it from the test name. CI uploads this with its other
+artifacts. Use the complete `layout.spec.ts screenshots.spec.ts` command when
+checking the one-minute browser-suite target; timing one case or increasing the
+worker count does not establish the full-suite improvement.
 
 ```sh
 bun run test:report

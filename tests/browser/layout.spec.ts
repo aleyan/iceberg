@@ -1,5 +1,7 @@
 import { test, expect, views, openIceberg, selectItem, noScrollbars, settle, labelY } from './helpers';
 
+test.use({ controlledClock: true });
+
 for (const view of views) {
   test(`${view}: a wheel-less mouse can focus and navigate with page and arrow keys`, async ({ page }) => {
     await openIceberg(page, `view=${view}&embedded&item=entry-23`);
@@ -19,9 +21,11 @@ for (const view of views) {
     await expect(canvas).toBeFocused();
     const pageY = await page.evaluate(() => scrollY);
     const initial = await labelY(page, 'entry-23');
+    const highest = await highestVisibleWorldY(page);
     await page.keyboard.press('PageDown');
     await settle(page);
-    expect(await labelY(page, 'entry-23')).toBeLessThan(initial - 100);
+    await expect(page.locator('article[data-slug="entry-23"]')).toBeHidden();
+    expect(await highestVisibleWorldY(page)).toBeLessThan(highest);
     await page.keyboard.press('PageUp');
     await settle(page);
     expect(await labelY(page, 'entry-23')).toBeCloseTo(initial, 0);
@@ -44,8 +48,11 @@ for (const view of views) {
     await page.locator('canvas').focus();
     const pageY = await page.evaluate(() => scrollY);
     const initial = await labelY(page, 'entry-23');
+    const highest = await highestVisibleWorldY(page);
     await page.keyboard.press('Space');
-    await expect.poll(() => labelY(page, 'entry-23')).toBeLessThan(initial - 100);
+    await settle(page);
+    await expect(page.locator('article[data-slug="entry-23"]')).toBeHidden();
+    expect(await highestVisibleWorldY(page)).toBeLessThan(highest);
     await page.keyboard.press('Shift+Space');
     await settle(page);
     expect(await labelY(page, 'entry-23')).toBeCloseTo(initial, 0);
@@ -102,6 +109,7 @@ for (const view of views) {
     const card = await page.locator('.is-pinned .iceberg-viewer__item-details').boundingBox();
     await page.mouse.move(card!.x + card!.width / 2, card!.y + 32);
     await page.mouse.wheel(0, 240);
+    await settle(page);
     await expect.poll(() => labelY(page, 'entry-56')).toBeLessThan(before - 2);
     expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
     await noScrollbars(page, false);
@@ -110,12 +118,16 @@ for (const view of views) {
     // Native wheel input exercises the host's complete path rather than moving
     // a private camera. Stop immediately at the last label to avoid page handoff.
     const last = page.locator('article[data-slug="entry-110"]');
-    for (let i = 0; i < 80 && !await last.isVisible(); i++) {
+    for (let i = 0; i < 80; i++) {
+      if (await last.isVisible()) {
+        const name = await last.locator('.iceberg-viewer__item-name').boundingBox();
+        const bounds = await page.locator('#iceberg').boundingBox();
+        if (name && bounds && name.y >= bounds.y && name.y + name.height <= bounds.y + bounds.height) break;
+      }
       await page.mouse.wheel(0, 200);
-      await page.waitForTimeout(25);
+      await settle(page);
     }
     await expect(last).toBeVisible();
-    await page.mouse.wheel(0, 10000);
     await settle(page);
     const finalName = await last.locator('.iceberg-viewer__item-name').boundingBox();
     const host = await page.locator('#iceberg').boundingBox();
@@ -179,20 +191,30 @@ test('horizontal wheel gestures enforce Arc and List rotation limits', async ({ 
   }
 });
 
-test('native touch swipes over descriptions and taps remain usable', async ({ page, context, browserName, isMobile }) => {
+test('native touch swipes over descriptions and taps remain usable', async ({ page, browserName, isMobile }) => {
   test.skip(browserName !== 'chromium' || !isMobile, 'Native CDP touch injection is Chrome-only; all four profiles run layout and wheel tests.');
   await openIceberg(page, 'view=list');
   await selectItem(page);
   const before = await labelY(page, 'entry-56');
   const card = await page.locator('.is-pinned .iceberg-viewer__item-details').boundingBox();
   const x = card!.x + card!.width / 2, y = card!.y + 80;
-  const cdp = await context.newCDPSession(page);
+  const cdp = await page.context().newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
   for (let i = 1; i <= 5; i++) {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - i * 12 }] });
-    await page.waitForTimeout(30);
+    await page.clock.runFor(30);
   }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  // Simulate inertia only until the projected label stops moving. Rendering
+  // a fixed 1.8s of frames wastes software-GPU work after the gesture settles.
+  let previous = await labelY(page, 'entry-56'), stable = 0;
+  for (let i = 0; i < 32 && stable < 2; i++) {
+    await page.clock.runFor(64);
+    const current = await labelY(page, 'entry-56');
+    stable = current === previous ? stable + 1 : 0;
+    previous = current;
+  }
+  expect(stable, 'touch inertia settles').toBe(2);
   await expect.poll(() => labelY(page, 'entry-56')).toBeLessThan(before - 2);
   await settle(page);
   await noScrollbars(page);
@@ -209,3 +231,36 @@ test('disposing removes the renderer and overlays without browser errors', async
   await page.keyboard.press('Escape');
   await noScrollbars(page);
 });
+
+// Exercise the production render loop, including the elapsed-time value passed
+// to easing: a unit test of easeCamera alone cannot catch a caller's time cap.
+test('camera easing follows elapsed time even when frames are sparse', async ({ page }) => {
+  const positions: number[] = [];
+  for (const dense of [true, false]) {
+    await openIceberg(page, 'view=list&item=entry-23');
+    await page.keyboard.press('Escape');
+    await page.locator('canvas').focus();
+    // Start on the clock's 16ms RAF boundary, so both paths advance exactly
+    // the same elapsed time rather than including a partial initial frame.
+    await page.clock.runFor(16 - await page.evaluate(() => performance.now() % 16));
+    const initial = await labelY(page, 'entry-23');
+    await page.keyboard.press('ArrowDown');
+    if (dense) await page.clock.runFor(128);
+    else await page.clock.fastForward(128);
+    await expect(page.locator('article[data-slug="entry-23"]')).toBeVisible();
+    const current = await labelY(page, 'entry-23');
+    expect(current).toBeLessThan(initial - 5);
+    positions.push(current);
+  }
+  expect(positions[1]).toBeCloseTo(positions[0], 0);
+});
+
+// A page-sized jump can hide the old anchor in one frame. Its DOM transform
+// then deliberately stops updating; use the visible world heights to verify
+// direction rather than treating an offscreen label's stale transform as motion.
+async function highestVisibleWorldY(page: import('@playwright/test').Page) {
+  const highest = await page.locator('article[data-world-y]:not([hidden])').evaluateAll(es =>
+    Math.max(...es.map(el => Number((el as HTMLElement).dataset.worldY))));
+  expect(Number.isFinite(highest), 'the iceberg still has visible labels').toBe(true);
+  return highest;
+}

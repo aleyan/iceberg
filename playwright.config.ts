@@ -19,7 +19,7 @@ export default defineConfig({
   expect: { timeout: 10_000, toHaveScreenshot: { animations: 'disabled', maxDiffPixelRatio: 0.002 } },
   updateSnapshots: 'none',
   snapshotPathTemplate: '{testDir}/screenshots/{platform}/{projectName}/{arg}{ext}',
-  reporter: [['list'], ['html', { open: 'never' }]],
+  reporter: [['list'], ['html', { open: 'never' }], ['./tests/browser/timing-reporter.ts']],
   use: {
     baseURL: 'http://127.0.0.1:4179',
     // Hosted runners have no GPU. Keep CSS geometry intact while bounding
