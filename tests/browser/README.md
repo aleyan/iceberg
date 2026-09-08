@@ -114,7 +114,7 @@ automatic retries to hide intermittent failures. Reports, performance JSON,
 failure screenshots, and traces are retained as artifacts for 14 days.
 Traces retain DOM snapshots, console, and network events; continuous trace
 screenshots are disabled because GPU readbacks distort performance measurements.
-CI allows 20 seconds for camera settling and three minutes per multi-step test;
+CI allows 20 seconds for camera settling and four minutes per multi-step test;
 native runs retain five-second settling and 45-second test deadlines. These
 functional-test deadlines are separate from the measured frame budgets above.
 

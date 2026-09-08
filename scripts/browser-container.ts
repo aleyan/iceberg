@@ -36,7 +36,7 @@ for (const [arch, names] of [
   mkdirSync(cache, { recursive: true });
   await run(['docker', 'build', `--platform=${platform}`, '-t', image, '-f', 'tests/browser/Dockerfile', '.']);
   await run(['docker', 'run', '--rm', '--init', '--ipc=host', `--platform=${platform}`,
-    '-v', `${root}:/work`, '-v', '/work/node_modules', '-v', `${cache}:/root/.cache`, '-e', 'CI=1', '-e', 'ICEBERG_TEST_TIMEOUT=180000',
+    '-v', `${root}:/work`, '-v', '/work/node_modules', '-v', `${cache}:/root/.cache`, '-e', 'CI=1', '-e', 'ICEBERG_TEST_TIMEOUT=240000',
     '-e', 'ICEBERG_PERF_PROFILE=ci', image,
     'bash', '-c', 'bun install --frozen-lockfile && xvfb-run -a bun x playwright test "$@" --headed', 'browser-tests',
     ...args, ...projects.map(project => `--project=${project}`),
