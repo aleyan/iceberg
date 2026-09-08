@@ -33,16 +33,22 @@ jobs:
           retention-days: 14
 
   browser:
-    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.suite.name }} (${{ matrix.profile.project }}, ${{ matrix.profile.runner }})
+    runs-on: ${{ matrix.profile.runner }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        include:
+        profile:
           - { project: chrome-desktop, runner: ubuntu-24.04 }
           - { project: chrome-mobile, runner: ubuntu-24.04 }
           - { project: firefox-desktop, runner: ubuntu-24.04-arm }
           - { project: firefox-mobile, runner: ubuntu-24.04-arm }
+        # Native wheel acknowledgements are slow under software Chrome. Keep
+        # frame measurements isolated from the longer interaction/visual suite.
+        suite:
+          - { name: browser, files: 'layout.spec.ts screenshots.spec.ts' }
+          - { name: performance, files: 'performance.spec.ts' }
     # Keep this version in sync with @playwright/test and the local Dockerfile.
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
@@ -64,13 +70,13 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/mesa_shader_cache
-          key: mesa-${{ matrix.runner }}-playwright-1.63.0-${{ hashFiles('src/*material*', 'src/ocean.ts') }}
-      - name: Layout, scrolling, screenshots, and performance
-        run: xvfb-run -a bun x playwright test --project=${{ matrix.project }} --headed
+          key: mesa-${{ matrix.profile.runner }}-playwright-1.63.0-${{ hashFiles('src/*material*', 'src/ocean.ts') }}
+      - name: Run ${{ matrix.suite.name }} checks
+        run: xvfb-run -a bun x playwright test ${{ matrix.suite.files }} --project=${{ matrix.profile.project }} --headed
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: browser-${{ matrix.project }}
+          name: ${{ matrix.suite.name }}-${{ matrix.profile.project }}
           path: |
             playwright-report/
             test-results/

@@ -106,8 +106,10 @@ an affected user's device.
 
 ## CI and failures
 
-CI runs units/typechecks/build plus one isolated container job per browser
-profile, covering interactions, screenshots, and performance. There are no
+CI runs units/typechecks/build plus two isolated container jobs per browser
+profile: interactions/screenshots and performance. This keeps software Chrome's
+native wheel acknowledgements from exhausting the interaction job's deadline,
+and each performance run still has its own runner. There are no
 automatic retries to hide intermittent failures. Reports, performance JSON,
 failure screenshots, and traces are retained as artifacts for 14 days.
 Traces retain DOM snapshots, console, and network events; continuous trace
