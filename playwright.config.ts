@@ -25,7 +25,9 @@ export default defineConfig({
     colorScheme: 'dark',
     locale: 'en-US',
     timezoneId: 'UTC',
-    trace: 'retain-on-failure',
+    // Continuous trace screenshots force GPU readbacks and distort frame
+    // measurements. Keep DOM/network traces and explicit failure screenshots.
+    trace: { mode: 'retain-on-failure', screenshots: false },
     screenshot: 'only-on-failure',
     video: 'off',
   },

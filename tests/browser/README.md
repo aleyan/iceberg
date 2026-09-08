@@ -110,6 +110,8 @@ CI runs units/typechecks/build plus one isolated container job per browser
 profile, covering interactions, screenshots, and performance. There are no
 automatic retries to hide intermittent failures. Reports, performance JSON,
 failure screenshots, and traces are retained as artifacts for 14 days.
+Traces retain DOM snapshots, console, and network events; continuous trace
+screenshots are disabled because GPU readbacks distort performance measurements.
 
 ```sh
 bun run test:report
