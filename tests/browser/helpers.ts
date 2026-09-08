@@ -13,7 +13,15 @@ export { expect };
 export const views = ['orbit', 'arc', 'list'] as const;
 
 export async function openIceberg(page: Page, query = '') {
+  const visual = new URLSearchParams(query).has('visual');
   await page.goto('/?' + query);
+  if (visual) {
+    // The fixture verifies stable projections and pauses inside its render
+    // callback. Do not keep rendering through separate driver-side waits.
+    await page.waitForFunction(() => window.icebergTest?.visualReady
+      && !document.querySelector('.iceberg-viewer__loading'), undefined, { polling: 50 });
+    return;
+  }
   await page.waitForFunction(() => window.icebergTest?.ready, undefined, { polling: 50 });
   await page.locator('.iceberg-viewer__loading').waitFor({ state: 'detached' });
   await settle(page);

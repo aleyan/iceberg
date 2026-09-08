@@ -6,8 +6,8 @@ export interface FrameSample { interval: number; work: number }
 export interface BrowserFixture {
   controller: IcebergController;
   ready: boolean;
+  readonly visualReady: boolean;
   readonly frameCount: number;
-  pauseRendering(): Promise<void>;
   startMeasurement(): void;
   endMeasurement(): FrameSample[];
 }
@@ -23,6 +23,11 @@ let recording = false;
 let paused = false;
 let previous = 0;
 let samples: FrameSample[] = [];
+let assetsLoaded = false;
+let visualReady = false;
+let previousProjection = '';
+let stableFrames = 0;
+let stableSince = 0;
 window.requestAnimationFrame = callback => requestFrame(timestamp => {
   if (paused) return;
   // Screenshot poses are static deep links. Limit their submission rate so a
@@ -36,6 +41,20 @@ window.requestAnimationFrame = callback => requestFrame(timestamp => {
   const start = performance.now();
   callback(timestamp);
   renderedFrames++;
+  if (params.has('visual') && assetsLoaded) {
+    // Observe stability as frames finish, rather than starting another series
+    // of frame waits after several Playwright round trips. Stop submitting
+    // identical WebGL frames before the driver asks for readiness/screenshots.
+    const projection = [...document.querySelectorAll<HTMLElement>('.iceberg-viewer__item:not([hidden])')]
+      .map(e => e.dataset.slug + ':' + e.style.cssText).join('|');
+    if (projection && projection === previousProjection) stableFrames++;
+    else { stableFrames = 0; stableSince = performance.now(); }
+    previousProjection = projection;
+    if (stableFrames >= 2 && performance.now() - stableSince >= 150) {
+      paused = true;
+      visualReady = true;
+    }
+  }
   if (recording) {
     if (previous) samples.push({ interval: timestamp - previous, work: performance.now() - start });
     previous = timestamp;
@@ -83,20 +102,15 @@ const controller = mountIceberg(host, {
 });
 window.icebergTest = {
   controller, ready: false,
+  get visualReady() { return visualReady; },
   get frameCount() { return renderedFrames; },
-  async pauseRendering() {
-    // Only screenshots use this, after assets and camera motion have settled.
-    // Preserve the rendered canvas while preventing software WebGL from
-    // monopolizing the CPU during repeated screenshot readback.
-    paused = true;
-    await new Promise<void>(resolve => requestFrame(() => resolve()));
-  },
   startMeasurement() { samples = []; previous = 0; recording = true; },
   endMeasurement() { recording = false; return samples; },
 };
 await controller.ready;
 await assetsReady;
+await document.fonts.ready;
+assetsLoaded = true;
 const readyFrame = renderedFrames;
 while (renderedFrames <= readyFrame) await new Promise(resolve => setTimeout(resolve, 25));
-await document.fonts.ready;
 window.icebergTest.ready = true;

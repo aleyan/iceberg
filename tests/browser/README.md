@@ -72,10 +72,15 @@ The Chrome image uses emulation on Apple Silicon; the Firefox image uses
 emulation on Intel hosts. This can be slower than native execution. Browser revisions, the
 Dockerfile, and the CI image must be updated together.
 
-Screenshot tests freeze the water's time, cap visual-only frame submissions at
-5 Hz, wait for assets/fonts and projected labels to settle, then pause the fixture's animation scheduling during image
-readback. Underwater captures start from a fresh deep-linked mount so the camera pose
-is exact. Pausing avoids wasting software-renderer CPU on identical frames.
+Screenshot tests freeze the water's time and cap visual-only frame submissions at
+5 Hz. After assets/fonts load, the fixture verifies unchanged label projections
+and card offsets across three rendered frames, then stops scheduling frames
+immediately. Readiness also waits for the loading indicator to disappear. This
+happens inside the fixture: separate browser commands must not keep an already
+stable scene rendering while they check readiness. The screenshots assert that
+the frame count stays fixed during capture. Underwater captures start from a
+fresh deep-linked mount so the camera pose is exact. No water-idle timer is
+involved; `stillFrame` freezes shader time but does not itself stop rendering.
 Layout and performance tests never cap or pause the renderer; performance tests always animate the water.
 
 ## Performance
