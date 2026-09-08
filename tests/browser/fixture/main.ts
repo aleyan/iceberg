@@ -6,6 +6,7 @@ export interface FrameSample { interval: number; work: number }
 export interface BrowserFixture {
   controller: IcebergController;
   ready: boolean;
+  readonly frameCount: number;
   pauseRendering(): Promise<void>;
   startMeasurement(): void;
   endMeasurement(): FrameSample[];
@@ -82,6 +83,7 @@ const controller = mountIceberg(host, {
 });
 window.icebergTest = {
   controller, ready: false,
+  get frameCount() { return renderedFrames; },
   async pauseRendering() {
     // Only screenshots use this, after assets and camera motion have settled.
     // Preserve the rendered canvas while preventing software WebGL from

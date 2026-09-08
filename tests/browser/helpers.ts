@@ -20,17 +20,21 @@ export async function openIceberg(page: Page, query = '') {
 }
 
 export async function settle(page: Page) {
-  // Wait for projected hit targets to stop moving, rather than sleeping for an
-  // assumed animation duration. Include a nonzero sample count to detect hangs.
+  // Require stable projections across actual rendered frames. On a software
+  // GPU, six timer ticks can all occur before the next animation frame.
   await page.evaluate(async timeout => {
-    let previous = '', stable = 0;
+    let previous = '', stable = 0, lastFrame = -1, stableSince = performance.now();
     const deadline = performance.now() + timeout;
     while (performance.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 25));
+      const frame = window.icebergTest.frameCount;
+      if (frame === lastFrame) continue;
+      lastFrame = frame;
       const current = [...document.querySelectorAll<HTMLElement>('.iceberg-viewer__item:not([hidden])')]
         .map(e => e.dataset.slug + ':' + e.style.transform).join('|');
-      stable = current && current === previous ? stable + 1 : 0;
-      if (stable >= 6) return;
+      if (current && current === previous) stable++;
+      else { stable = 0; stableSince = performance.now(); }
+      if (stable >= 2 && performance.now() - stableSince >= 150) return;
       previous = current;
     }
     throw new Error(`Iceberg did not settle within ${timeout}ms`);
