@@ -12,6 +12,9 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // Report the first failure promptly rather than repeating a shared setup or
+  // rendering failure for every case in the same isolated CI browser job.
+  maxFailures: process.env.CI ? 1 : 0,
   timeout: Number(process.env.ICEBERG_TEST_TIMEOUT ?? (process.env.CI ? 120_000 : 45_000)),
   expect: { timeout: 10_000, toHaveScreenshot: { animations: 'disabled', maxDiffPixelRatio: 0.002 } },
   updateSnapshots: 'none',
