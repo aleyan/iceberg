@@ -22,9 +22,10 @@ export async function openIceberg(page: Page, query = '') {
 export async function settle(page: Page) {
   // Wait for projected hit targets to stop moving, rather than sleeping for an
   // assumed animation duration. Include a nonzero sample count to detect hangs.
-  await page.evaluate(async () => {
+  await page.evaluate(async timeout => {
     let previous = '', stable = 0;
-    for (let i = 0; i < 200; i++) {
+    const deadline = performance.now() + timeout;
+    while (performance.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 25));
       const current = [...document.querySelectorAll<HTMLElement>('.iceberg-viewer__item:not([hidden])')]
         .map(e => e.dataset.slug + ':' + e.style.transform).join('|');
@@ -32,8 +33,8 @@ export async function settle(page: Page) {
       if (stable >= 6) return;
       previous = current;
     }
-    throw new Error('Iceberg did not settle within five seconds');
-  });
+    throw new Error(`Iceberg did not settle within ${timeout}ms`);
+  }, process.env.CI ? 20_000 : 5_000);
 }
 
 export async function selectItem(page: Page, slug = 'entry-56') {
