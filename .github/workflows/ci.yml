@@ -46,6 +46,9 @@ jobs:
       ICEBERG_PERF_PROFILE: ci
     steps:
       - uses: actions/checkout@v4
+      # The Playwright image includes browsers, but setup-bun needs unzip.
+      - name: Install Bun setup prerequisite
+        run: apt-get update && apt-get install -y --no-install-recommends unzip
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.8

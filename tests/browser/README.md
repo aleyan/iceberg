@@ -42,6 +42,8 @@ emulations, not tests on physical Android/iOS devices.
   A selected description must remain visible after resizing.
 - Wheel scrolling over an open description, continued descent to the last item,
   and no premature movement of an embedding page.
+- Mouse focus and navigation without a wheel: arrows, Page Up/Down, Space,
+  Shift+Space, and Home/End, in every view and browser profile.
 - No scrollbars on the standalone page or inside the viewer, menu, or description.
   The assertions check overflow styles and scroll dimensions, including overlay
   scrollbars that consume zero width. They also check unintended scroll offsets.

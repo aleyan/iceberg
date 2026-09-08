@@ -1,6 +1,49 @@
 import { test, expect, views, openIceberg, selectItem, noScrollbars, settle, labelY } from './helpers';
 
 for (const view of views) {
+  test(`${view}: a wheel-less mouse can focus and navigate with page and arrow keys`, async ({ page }) => {
+    await openIceberg(page, `view=${view}&embedded&item=entry-23`);
+    await page.locator('#iceberg').evaluate(el => el.scrollIntoView());
+    await page.keyboard.press('Escape');
+    const canvas = page.locator('canvas');
+    const empty = await canvas.evaluate(el => {
+      const box = el.getBoundingClientRect();
+      for (let y = 8; y < box.height; y += 40) {
+        for (let x = 8; x < box.width; x += 40) {
+          if (document.elementFromPoint(box.x + x, box.y + y) === el) return { x, y };
+        }
+      }
+      throw new Error('No exposed canvas for mouse navigation');
+    });
+    await canvas.click({ position: empty });
+    await expect(canvas).toBeFocused();
+    const pageY = await page.evaluate(() => scrollY);
+    const initial = await labelY(page, 'entry-23');
+    await page.keyboard.press('PageDown');
+    await settle(page);
+    expect(await labelY(page, 'entry-23')).toBeLessThan(initial - 100);
+    await page.keyboard.press('PageUp');
+    await settle(page);
+    expect(await labelY(page, 'entry-23')).toBeCloseTo(initial, 0);
+    await page.keyboard.press('Space');
+    await settle(page);
+    expect(await labelY(page, 'entry-23')).toBeLessThan(initial - 100);
+    await page.keyboard.press('Shift+Space');
+    await settle(page);
+    expect(await labelY(page, 'entry-23')).toBeCloseTo(initial, 0);
+    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowDown');
+    await settle(page);
+    expect(await labelY(page, 'entry-23')).toBeLessThan(initial - 30);
+    expect(await page.evaluate(() => scrollY)).toBe(pageY);
+    await page.keyboard.press('End');
+    await settle(page);
+    await expect(page.locator('article[data-slug="entry-110"]')).toBeVisible();
+    await page.keyboard.press('Home');
+    await settle(page);
+    await expect(page.locator('article[data-slug="entry-1"]')).toBeVisible();
+    await noScrollbars(page, false);
+  });
+
   test(`${view}: responsive layout, selector, descriptions, and no scrollbars`, async ({ page }) => {
     await openIceberg(page, `view=${view}&still`);
     await noScrollbars(page);

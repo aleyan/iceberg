@@ -67,7 +67,7 @@ export async function noScrollbars(page: Page, includeDocument = true) {
     }
     if (includeDocument) {
       const root = document.scrollingElement!;
-      if (root.scrollWidth > innerWidth + 1 || root.scrollHeight > innerHeight + 1) errors.push('document overflow');
+      if (root.scrollWidth > root.clientWidth + 1 || root.scrollHeight > root.clientHeight + 1) errors.push('document overflow');
       if (scrollX || scrollY) errors.push('document scroll offset');
     }
     return errors;

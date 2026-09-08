@@ -4,6 +4,11 @@ A reusable interactive 3D iceberg for the web. It renders the iceberg, split
 ocean, atmosphere, and depth-aware item labels; your application supplies the
 catalogue.
 
+Click the iceberg or focus it with Tab to navigate without a mouse wheel.
+Up/Down moves a line, Page Up/Down (or Shift+Space/Space) moves a page, and
+Home/End jumps to the top/bottom. Left/Right rotates within the selected view's
+limits. Holding an arrow key uses the keyboard's normal repeat behavior.
+
 ## Install
 
 ```sh

@@ -132,7 +132,7 @@ function initializeIceberg(
   canvas.setAttribute(
     "aria-label",
     options.canvasAriaLabel
-      ?? "Explore the iceberg. Scroll or use up and down arrows to descend; drag or use left and right arrows to rotate.",
+      ?? "Explore the iceberg. Click or tab here, then use arrows or Page Up and Page Down to descend; drag or use left and right arrows to rotate.",
   );
 
   const hint = document.createElement("div");
@@ -332,6 +332,9 @@ function initializeIceberg(
   function beginViewRotation(event: PointerEvent) {
     if (event.pointerType === "touch" || event.button !== 0 || viewDrag.dragging) return;
     event.preventDefault();
+    // preventDefault suppresses the canvas's native mouse focus. Keep keyboard
+    // navigation available after clicking, including with a wheel-less mouse.
+    canvas.focus({ preventScroll: true });
     viewDrag.dragging = true;
     viewDrag.pointerId = event.pointerId;
     viewDrag.lastX = event.clientX;
@@ -653,9 +656,9 @@ function initializeIceberg(
       ? "Scroll to descend · Select a name to keep it open"
       : view === "arc" ? "Scroll to descend · Drag to turn 30° · Select a name" : DEFAULT_HINT;
     canvas.setAttribute("aria-label", view === "list"
-      ? "Explore the iceberg list. Scroll or use up and down arrows to descend. Horizontal rotation is locked."
-      : view === "arc" ? "Explore the front of the iceberg. Scroll to descend; drag or use left and right arrows to rotate within 30 degrees."
-      : options.canvasAriaLabel ?? "Explore the iceberg. Scroll or use up and down arrows to descend; drag or use left and right arrows to rotate.");
+      ? "Explore the iceberg list. Click or tab here, then scroll or use arrows or Page Up and Page Down to descend. Horizontal rotation is locked."
+      : view === "arc" ? "Explore the front of the iceberg. Click or tab here, then scroll or use arrows or Page Up and Page Down to descend; drag or use left and right arrows to rotate within 30 degrees."
+      : options.canvasAriaLabel ?? "Explore the iceberg. Click or tab here, then use arrows or Page Up and Page Down to descend; drag or use left and right arrows to rotate.");
   }
   function setView(next: IcebergView) {
     assertView(next);
@@ -679,14 +682,22 @@ function initializeIceberg(
   }
   updateViewInterface();
   function handleCanvasKeydown(event: KeyboardEvent) {
+    if (event.altKey || event.ctrlKey || event.metaKey || !cameraRail.ready) return;
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
       cameraOrbit.targetYaw = constrainYaw(view, cameraOrbit.targetYaw + (event.key === "ArrowLeft" ? -0.18 : 0.18));
-    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    } else if (["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].includes(event.key)) {
       event.preventDefault();
       dismissDescentPrompt();
+      // Match a 40px line or 85% of the visible page at any camera scale.
+      const pageStep = halfViewHeight * 2 * 0.85;
+      const lineStep = halfViewHeight * 2 * 40 / height;
+      const direction = event.key === "ArrowUp" || event.key === "PageUp" || (event.key === " " && event.shiftKey) ? 1 : -1;
+      const step = event.key.startsWith("Arrow") ? lineStep : pageStep;
       cameraRail.desiredY = THREE.MathUtils.clamp(
-        cameraRail.desiredY + (event.key === "ArrowDown" ? -0.8 : 0.8),
+        event.key === "Home" ? cameraRail.maxY
+          : event.key === "End" ? cameraRail.minY
+          : cameraRail.desiredY + direction * step,
         cameraRail.minY,
         cameraRail.maxY,
       );
