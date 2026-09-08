@@ -97,9 +97,9 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 210px;
+  width: var(--iceberg-item-width, 210px);
   margin-top: -16px;
-  margin-left: -105px;
+  margin-left: calc(var(--iceberg-item-width, 210px) / -2);
   pointer-events: auto;
 }
 
@@ -300,8 +300,8 @@
 
 @container (max-width: 600px) {
   .iceberg-viewer__item {
-    width: 160px;
-    margin-left: -80px;
+    width: var(--iceberg-item-width, 160px);
+    margin-left: calc(var(--iceberg-item-width, 160px) / -2);
   }
 
   .iceberg-viewer__item-name {
@@ -326,4 +326,82 @@
     );
     font-size: 13px;
   }
+}
+
+
+.iceberg-viewer__view-selector {
+  position: absolute;
+  z-index: 12;
+  top: 16px;
+  right: 16px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  touch-action: manipulation;
+}
+
+.iceberg-viewer__view-selector button {
+  padding: 8px 12px;
+  border: 0;
+  color: #effbff;
+  background: transparent;
+  font: inherit;
+  line-height: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.iceberg-viewer__view-selector .iceberg-viewer__view-trigger,
+.iceberg-viewer__view-menu {
+  border: 1px solid #a6e8ff40;
+  border-radius: 8px;
+  background: #05172bf0;
+}
+
+.iceberg-viewer__view-trigger::after {
+  display: inline-block;
+  width: 0.4em;
+  height: 0.4em;
+  margin-left: 0.7em;
+  vertical-align: 0.2em;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.iceberg-viewer__view-trigger[aria-expanded="true"]::after {
+  vertical-align: 0;
+  transform: rotate(225deg);
+}
+
+.iceberg-viewer__view-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 100%;
+  padding: 4px;
+}
+
+.iceberg-viewer__view-menu[hidden] { display: none; }
+
+.iceberg-viewer__view-menu button {
+  display: block;
+  width: 100%;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.iceberg-viewer__view-menu button[aria-checked="true"],
+.iceberg-viewer__view-menu button:hover {
+  background: #a6e8ff20;
+}
+
+.iceberg-viewer__view-selector button:focus-visible {
+  outline: 2px solid #a3ebff;
+  outline-offset: 2px;
+}
+
+@container (max-width: 600px) {
+  .iceberg-viewer__view-selector { font-size: 13px; }
 }

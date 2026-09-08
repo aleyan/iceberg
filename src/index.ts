@@ -7,7 +7,12 @@ import { createIceMaterial } from "./ice-material.js";
 import { createItemLabels } from "./item-labels.js";
 import { createOcean } from "./ocean.js";
 import type { IcebergItem } from "./item-data.js";
+import { createViewSelector } from "./view-selector.js";
+import { easeCamera } from "./navigation.js";
 import { createLifecycle } from "./lifecycle.js";
+
+import { assertView, constrainYaw, icebergViews, type IcebergView } from "./view.js";
+export { icebergViews, type IcebergView } from "./view.js";
 
 export {
   arrangeItems,
@@ -25,6 +30,11 @@ export interface IcebergAssets {
 
 export interface IcebergOptions {
   items: readonly IcebergItem[];
+  /** Initial layout; defaults to orbit. */
+  view?: IcebergView;
+  /** Show the built-in view selector; defaults to false. */
+  viewSelector?: boolean;
+  onViewChange?: (view: IcebergView) => void;
   aboveWaterLabelStretch?: number;
   assets?: Partial<IcebergAssets>;
   ariaLabel?: string;
@@ -43,6 +53,9 @@ export interface IcebergOptions {
 export interface IcebergController {
   /** Resolves when populated; rejects on loading failure or with AbortError if disposed first. */
   readonly ready: Promise<void>;
+  readonly availableViews: typeof icebergViews;
+  readonly view: IcebergView;
+  setView(view: IcebergView): void;
   /** Stops rendering, removes listeners and generated DOM, and releases GPU resources. */
   dispose(): void;
 }
@@ -85,6 +98,15 @@ function initializeIceberg(
   lifecycle: ReturnType<typeof createLifecycle>,
 ): IcebergController {
   const { ready, resolveReady, onCleanup, dispose } = lifecycle;
+
+  let view = options.view ?? "orbit";
+  assertView(view);
+  const previousView = host.getAttribute("data-iceberg-view");
+  host.dataset.icebergView = view;
+  onCleanup(() => {
+    if (previousView === null) host.removeAttribute("data-iceberg-view");
+    else host.setAttribute("data-iceberg-view", previousView);
+  });
 
   const waterLevel = options.waterLevel ?? -0.72;
   const underwaterStretch = THREE.MathUtils.clamp(options.underwaterStretch ?? 2, 1, 4);
@@ -148,6 +170,27 @@ function initializeIceberg(
     hint.remove();
     descentPrompt.remove();
     loading.remove();
+  });
+
+  const viewSelector = createViewSelector(view, setView);
+  const selector = viewSelector.element;
+  if (options.viewSelector) host.append(selector);
+  onCleanup(() => viewSelector.dispose());
+  let hostDocumentTop = 0;
+  function updateOverlayBounds() {
+    const bounds = host.getBoundingClientRect();
+    hostDocumentTop = bounds.top + window.scrollY;
+    const viewportTop = window.visualViewport?.offsetTop ?? 0;
+    const top = Math.max(0, viewportTop - bounds.top);
+    selector.style.top = `${Math.min(Math.max(16, bounds.height - 60), top + 16)}px`;
+  }
+  window.addEventListener("scroll", updateOverlayBounds, { passive: true });
+  window.visualViewport?.addEventListener("resize", updateOverlayBounds);
+  window.visualViewport?.addEventListener("scroll", updateOverlayBounds);
+  onCleanup(() => {
+    window.removeEventListener("scroll", updateOverlayBounds);
+    window.visualViewport?.removeEventListener("resize", updateOverlayBounds);
+    window.visualViewport?.removeEventListener("scroll", updateOverlayBounds);
   });
 
   let loadingRemoveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -255,7 +298,6 @@ function initializeIceberg(
   };
   let touchTravel = 0;
   let suppressTouchClick = false;
-  let touchDragging = false;
   let touchInertiaActive = false;
   let touchVelocityY = 0;
   let touchVelocityYaw = 0;
@@ -305,8 +347,8 @@ function initializeIceberg(
     const deltaY = event.clientY - viewDrag.lastY;
     viewDrag.lastX = event.clientX;
     viewDrag.lastY = event.clientY;
-    cameraOrbit.targetYaw -= deltaX * 0.006;
-    cameraOrbit.targetPitch = THREE.MathUtils.clamp(
+    cameraOrbit.targetYaw = constrainYaw(view, cameraOrbit.targetYaw - deltaX * 0.006);
+    cameraOrbit.targetPitch = view === "list" ? 0 : THREE.MathUtils.clamp(
       cameraOrbit.targetPitch + deltaY * 0.002,
       -maxViewPitch,
       maxViewPitch,
@@ -323,13 +365,13 @@ function initializeIceberg(
   }
 
   function beginTouchNavigation(event: PointerEvent) {
-    if (event.pointerType !== "touch" || viewDrag.dragging) return;
+    if (event.pointerType !== "touch" || viewDrag.dragging
+      || (event.target instanceof Element && event.target.closest(".iceberg-viewer__view-selector"))) return;
     viewDrag.dragging = true;
     viewDrag.pointerId = event.pointerId;
     viewDrag.lastX = event.clientX;
     viewDrag.lastY = event.clientY;
     touchTravel = 0;
-    touchDragging = true;
     touchInertiaActive = false;
     touchVelocityY = 0;
     touchVelocityYaw = 0;
@@ -353,7 +395,7 @@ function initializeIceberg(
     if (touchTravel < 4) return;
     event.preventDefault();
     dismissDescentPrompt();
-    cameraOrbit.yaw -= deltaX * 0.006;
+    cameraOrbit.yaw = constrainYaw(view, cameraOrbit.yaw - deltaX * 0.006);
     cameraOrbit.targetYaw = cameraOrbit.yaw;
     const worldUnitsPerPixel = 2 * cameraOrbit.distance
       * Math.tan(verticalFov / 2) / Math.max(1, height);
@@ -385,7 +427,6 @@ function initializeIceberg(
       touchVelocityY = 0;
       touchVelocityYaw = 0;
     }
-    touchDragging = false;
     touchInertiaActive = suppressTouchClick
       && (Math.abs(touchVelocityY) > 0.0005 || Math.abs(touchVelocityYaw) > 0.00002);
     viewDrag.dragging = false;
@@ -508,6 +549,14 @@ function initializeIceberg(
       : itemMaximumY === null
         ? meshFocusY
         : itemMaximumY - halfViewHeight * 0.8;
+    const bottomLabelFocusY = itemPositions.length > 0
+      ? Math.min(...itemPositions.map(position => {
+          const outwardDepth = (position.x - center.x) * outwardX
+            + (position.z - center.z) * outwardZ;
+          const viewDepth = Math.max(camera.near, distance - outwardDepth);
+          return position.y + viewDepth * Math.tan(verticalFov / 2) * labelNdcLimit;
+        }))
+      : icebergBounds.min.y;
     const initialFocusY = Math.max(meshFocusY, labelFocusY);
     cameraTarget.set(center.x, initialFocusY, center.z);
     cameraOrbit.distance = distance;
@@ -517,6 +566,7 @@ function initializeIceberg(
     cameraRail.minY = Math.min(
       initialFocusY,
       icebergBounds.min.y - halfViewHeight * 0.94,
+      bottomLabelFocusY,
     );
     cameraRail.desiredY = preserveDepth
       ? THREE.MathUtils.lerp(cameraRail.maxY, cameraRail.minY, previousDepth)
@@ -526,6 +576,7 @@ function initializeIceberg(
   }
 
   function handleIcebergScroll(event: WheelEvent) {
+    if (event.target instanceof Element && event.target.closest(".iceberg-viewer__view-selector")) return;
     dismissDescentPrompt();
     if (!cameraRail.ready) return;
     const verticalPixels = event.deltaMode === 1
@@ -541,24 +592,24 @@ function initializeIceberg(
     if (Math.abs(horizontalPixels) > 0.01) {
       // Trackpads report the content-scroll direction, which is opposite the
       // fingers' motion. Reverse it so a horizontal gesture feels like drag.
-      cameraOrbit.targetYaw += horizontalPixels * 0.006;
+      cameraOrbit.targetYaw = constrainYaw(view, cameraOrbit.targetYaw + horizontalPixels * 0.006);
       event.preventDefault();
     }
     // Let an embedding page move the viewer to the top edge before the
     // iceberg starts consuming downward scroll.
-    if (verticalPixels > 0 && host.getBoundingClientRect().top > 0.5) return;
+    if (verticalPixels > 0 && hostDocumentTop - window.scrollY > 0.5) return;
     const nextY = THREE.MathUtils.clamp(
       cameraRail.desiredY - verticalPixels * 0.008,
       cameraRail.minY,
       cameraRail.maxY,
     );
     // Embedded icebergs should release the page scroll at either end.
-    if (nextY === cameraRail.desiredY) return;
+    if (nextY === cameraRail.desiredY && cameraTarget.y === nextY) return;
     event.preventDefault();
     cameraRail.desiredY = nextY;
   }
-  host.addEventListener("wheel", handleIcebergScroll, { passive: false });
-  onCleanup(() => host.removeEventListener("wheel", handleIcebergScroll));
+  host.addEventListener("wheel", handleIcebergScroll, { passive: false, capture: true });
+  onCleanup(() => host.removeEventListener("wheel", handleIcebergScroll, true));
 
   const itemLabels = createItemLabels(
     host,
@@ -571,7 +622,7 @@ function initializeIceberg(
         Math.sin(angle - cameraOrbit.yaw),
         Math.cos(angle - cameraOrbit.yaw),
       );
-      cameraOrbit.targetYaw = cameraOrbit.yaw + turn;
+      cameraOrbit.targetYaw = constrainYaw(view, view === "orbit" ? cameraOrbit.yaw + turn : 0);
       cameraOrbit.targetPitch = 0;
       if (instant) {
         cameraTarget.y = targetY;
@@ -585,6 +636,7 @@ function initializeIceberg(
       if (framingBounds) frameIcebergForScrolling(framingBounds, true);
     },
     {
+      view,
       aboveWaterLabelStretch: options.aboveWaterLabelStretch ?? 1,
       ariaLabel: options.itemsAriaLabel ?? "Iceberg items",
       deepestLabelSpan: () => halfViewHeight * 1.65,
@@ -594,10 +646,42 @@ function initializeIceberg(
   );
 
   onCleanup(() => itemLabels.dispose());
+  function updateViewInterface() {
+    host.dataset.icebergView = view;
+    viewSelector.update(view);
+    if (options.hint === undefined) hint.textContent = view === "list"
+      ? "Scroll to descend · Select a name to keep it open"
+      : view === "arc" ? "Scroll to descend · Drag to turn 30° · Select a name" : DEFAULT_HINT;
+    canvas.setAttribute("aria-label", view === "list"
+      ? "Explore the iceberg list. Scroll or use up and down arrows to descend. Horizontal rotation is locked."
+      : view === "arc" ? "Explore the front of the iceberg. Scroll to descend; drag or use left and right arrows to rotate within 30 degrees."
+      : options.canvasAriaLabel ?? "Explore the iceberg. Scroll or use up and down arrows to descend; drag or use left and right arrows to rotate.");
+  }
+  function setView(next: IcebergView) {
+    assertView(next);
+    if (lifecycle.disposed || next === view) return;
+    view = next;
+    touchVelocityYaw = 0;
+    touchVelocityY = 0;
+    touchInertiaActive = false;
+    if (viewDrag.pointerId >= 0) {
+      if (host.hasPointerCapture(viewDrag.pointerId)) host.releasePointerCapture(viewDrag.pointerId);
+      if (canvas.hasPointerCapture(viewDrag.pointerId)) canvas.releasePointerCapture(viewDrag.pointerId);
+    }
+    viewDrag.dragging = false;
+    viewDrag.pointerId = -1;
+    cameraOrbit.yaw = cameraOrbit.targetYaw = 0;
+    cameraOrbit.pitch = cameraOrbit.targetPitch = 0;
+    dismissDescentPrompt();
+    updateViewInterface();
+    itemLabels.setView(view);
+    options.onViewChange?.(view);
+  }
+  updateViewInterface();
   function handleCanvasKeydown(event: KeyboardEvent) {
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
-      cameraOrbit.targetYaw += event.key === "ArrowLeft" ? -0.18 : 0.18;
+      cameraOrbit.targetYaw = constrainYaw(view, cameraOrbit.targetYaw + (event.key === "ArrowLeft" ? -0.18 : 0.18));
     } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       dismissDescentPrompt();
@@ -679,7 +763,7 @@ function initializeIceberg(
       );
       cameraTarget.y = nextY;
       cameraRail.desiredY = nextY;
-      cameraOrbit.yaw += touchVelocityYaw * frameDelta;
+      cameraOrbit.yaw = constrainYaw(view, cameraOrbit.yaw + touchVelocityYaw * frameDelta);
       cameraOrbit.targetYaw = cameraOrbit.yaw;
       if (nextY === previousY && Math.abs(touchVelocityY) > 0) touchVelocityY = 0;
       const decay = Math.exp(-frameDelta / 180);
@@ -692,10 +776,14 @@ function initializeIceberg(
       }
     }
     if (cameraRail.ready) {
-      cameraTarget.y += (cameraRail.desiredY - cameraTarget.y) * 0.12;
+      cameraTarget.y = easeCamera(cameraTarget.y, cameraRail.desiredY, frameDelta, 130);
     }
-    cameraOrbit.yaw = THREE.MathUtils.lerp(cameraOrbit.yaw, cameraOrbit.targetYaw, 0.14);
-    cameraOrbit.pitch = THREE.MathUtils.lerp(cameraOrbit.pitch, cameraOrbit.targetPitch, 0.14);
+    cameraOrbit.yaw = easeCamera(cameraOrbit.yaw, cameraOrbit.targetYaw, frameDelta, 110);
+    cameraOrbit.pitch = easeCamera(cameraOrbit.pitch, cameraOrbit.targetPitch, frameDelta, 110);
+    itemLabels.setNavigating(viewDrag.dragging || touchInertiaActive
+      || cameraTarget.y !== cameraRail.desiredY
+      || cameraOrbit.yaw !== cameraOrbit.targetYaw
+      || cameraOrbit.pitch !== cameraOrbit.targetPitch);
     const horizontalDistance = Math.cos(cameraOrbit.pitch) * cameraOrbit.distance;
     camera.position.set(
       cameraTarget.x + Math.sin(cameraOrbit.yaw) * horizontalDistance,
@@ -704,6 +792,7 @@ function initializeIceberg(
     );
     camera.lookAt(cameraTarget);
     camera.updateMatrixWorld();
+    itemLabels.update(camera, width, height);
     renderer.getDrawingBufferSize(drawingBufferSize);
     ocean.update(
       camera,
@@ -713,14 +802,11 @@ function initializeIceberg(
       stillFrame ? 12 : elapsed,
       drawingBufferSize,
     );
-    // The GPU label atlas follows the camera without CPU work. Defer the
-    // transparent DOM hit-target raycasts during touch and its short inertia
-    // tail so mobile rendering can stay at the display's native refresh rate.
-    if (!touchDragging && !touchInertiaActive) itemLabels.update(camera, width, height);
     renderer.render(scene, camera);
   }
 
   function resize() {
+    updateOverlayBounds();
     const bounds = host.getBoundingClientRect();
     width = Math.max(1, Math.round(bounds.width));
     height = Math.max(1, Math.round(bounds.height));
@@ -740,5 +826,5 @@ function initializeIceberg(
 
   renderer.setAnimationLoop(renderFrame);
 
-  return { ready, dispose };
+  return { ready, dispose, availableViews: icebergViews, get view() { return view; }, setView };
 }
