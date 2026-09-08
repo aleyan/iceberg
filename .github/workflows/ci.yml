@@ -46,9 +46,12 @@ jobs:
       ICEBERG_PERF_PROFILE: ci
     steps:
       - uses: actions/checkout@v4
-      # The Playwright image includes browsers, but setup-bun needs unzip.
-      - name: Install Bun setup prerequisite
-        run: apt-get update && apt-get install -y --no-install-recommends unzip
+      # setup-bun needs unzip. Firefox also requires the home directory to be
+      # owned by its user; Actions mounts /github/home with a different owner.
+      - name: Prepare the browser container
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends unzip
+          chown "$(id -u):$(id -g)" "$HOME"
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.8
