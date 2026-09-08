@@ -1,5 +1,7 @@
 import { test, expect, views, openIceberg, noScrollbars } from './helpers';
 
+test.use({ deviceScaleFactor: 1 });
+
 for (const view of views) {
   test(`${view}: visual baseline`, async ({ page }) => {
     await openIceberg(page, `view=${view}&still&visual`);

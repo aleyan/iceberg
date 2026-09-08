@@ -87,7 +87,11 @@ attaches every sample and a JSON summary to the report.
 
 The local hardware profile requires p95 frame intervals below 34 ms, no frame
 above 200 ms, p95 callback work below 16 ms, and fewer than 5% of intervals above
-50 ms. The CI software-WebGL profile first measures the scene at rest, then
+50 ms. CI interaction and performance tests use a 0.25 device scale factor to
+bound software-rendering fill cost on runners without a GPU; their desktop and
+mobile CSS viewport sizes remain unchanged. Screenshots explicitly use 1, as do
+native GPU performance runs. The scale factor is included in performance reports.
+The CI software-WebGL profile first measures the scene at rest, then
 limits the additional cost of scrolling: p95 intervals must stay below 1.35×
 the idle p95 plus 10 ms (with a 100 ms floor and 500 ms ceiling), p95 callback
 work gets at most 8 ms extra (12–50 ms bounds), no frame may exceed one second,

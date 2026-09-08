@@ -19,7 +19,9 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:4179',
-    deviceScaleFactor: 1,
+    // Hosted runners have no GPU. Keep CSS geometry intact while bounding
+    // software fill cost; visual tests explicitly restore full resolution.
+    deviceScaleFactor: process.env.ICEBERG_PERF_PROFILE === 'ci' ? 0.25 : 1,
     colorScheme: 'dark',
     locale: 'en-US',
     timezoneId: 'UTC',

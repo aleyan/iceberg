@@ -34,6 +34,7 @@ for (const view of views) {
     const frames = samples.map(s => s.interval), work = samples.map(s => s.work);
     const metrics = {
       browser: testInfo.project.name, view, samples: samples.length,
+      deviceScaleFactor: testInfo.project.use.deviceScaleFactor,
       frameP50: percentile(frames, .5), frameP95: percentile(frames, .95), frameMax: Math.max(...frames),
       workP95: percentile(work, .95), workMax: Math.max(...work),
       idleFrameP95, idleWorkP95, slowThreshold,
