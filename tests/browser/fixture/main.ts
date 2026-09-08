@@ -1,4 +1,5 @@
 import { mountIceberg, type IcebergView, type IcebergController, type IcebergItem } from '../../../src/index';
+import { DefaultLoadingManager } from 'three';
 import '../../../styles.css';
 
 export interface FrameSample { interval: number; work: number }
@@ -57,6 +58,12 @@ const items: IcebergItem[] = Array.from({ length: 110 }, (_, i) => ({
 const host = document.querySelector<HTMLElement>('#iceberg')!;
 // Ensure the initial GPU glyph atlas uses the same bundled font on every OS.
 await document.fonts.load('15px IcebergTest');
+// Wait for the actual model, HDR, and texture loaders. Browser-wide
+// "networkidle" can stall even after these resources have finished loading.
+const assetsReady = new Promise<void>((resolve, reject) => {
+  DefaultLoadingManager.onLoad = resolve;
+  DefaultLoadingManager.onError = url => reject(new Error(`Fixture asset failed: ${url}`));
+});
 const controller = mountIceberg(host, {
   items,
   view: (params.get('view') ?? 'orbit') as IcebergView,
@@ -86,6 +93,7 @@ window.icebergTest = {
   endMeasurement() { recording = false; return samples; },
 };
 await controller.ready;
+await assetsReady;
 const readyFrame = renderedFrames;
 while (renderedFrames <= readyFrame) await new Promise(resolve => setTimeout(resolve, 25));
 await document.fonts.ready;

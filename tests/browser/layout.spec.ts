@@ -25,12 +25,6 @@ for (const view of views) {
     await page.keyboard.press('PageUp');
     await settle(page);
     expect(await labelY(page, 'entry-23')).toBeCloseTo(initial, 0);
-    await page.keyboard.press('Space');
-    await settle(page);
-    expect(await labelY(page, 'entry-23')).toBeLessThan(initial - 100);
-    await page.keyboard.press('Shift+Space');
-    await settle(page);
-    expect(await labelY(page, 'entry-23')).toBeCloseTo(initial, 0);
     for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowDown');
     await settle(page);
     expect(await labelY(page, 'entry-23')).toBeLessThan(initial - 30);
@@ -41,6 +35,21 @@ for (const view of views) {
     await page.keyboard.press('Home');
     await settle(page);
     await expect(page.locator('article[data-slug="entry-1"]')).toBeVisible();
+    await noScrollbars(page, false);
+  });
+
+  test(`${view}: Space and Shift+Space navigate without scrolling the page`, async ({ page }) => {
+    await openIceberg(page, `view=${view}&embedded&item=entry-23`);
+    await page.keyboard.press('Escape');
+    await page.locator('canvas').focus();
+    const pageY = await page.evaluate(() => scrollY);
+    const initial = await labelY(page, 'entry-23');
+    await page.keyboard.press('Space');
+    await expect.poll(() => labelY(page, 'entry-23')).toBeLessThan(initial - 100);
+    await page.keyboard.press('Shift+Space');
+    await settle(page);
+    expect(await labelY(page, 'entry-23')).toBeCloseTo(initial, 0);
+    expect(await page.evaluate(() => scrollY)).toBe(pageY);
     await noScrollbars(page, false);
   });
 

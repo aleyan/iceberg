@@ -15,7 +15,6 @@ export const views = ['orbit', 'arc', 'list'] as const;
 export async function openIceberg(page: Page, query = '') {
   await page.goto('/?' + query);
   await page.waitForFunction(() => window.icebergTest?.ready, undefined, { polling: 50 });
-  await page.waitForLoadState('networkidle');
   await page.locator('.iceberg-viewer__loading').waitFor({ state: 'detached' });
   await settle(page);
 }
