@@ -814,7 +814,11 @@ function initializeIceberg(
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    if (framingBounds) frameIcebergForScrolling(framingBounds, true);
+    if (framingBounds) {
+      frameIcebergForScrolling(framingBounds, true);
+      // Preserve the selected item when a new aspect ratio changes the rail.
+      itemLabels.focusPinned();
+    }
     // Changing the drawing buffer clears it. Repaint synchronously so the
     // browser cannot present the transparent canvas between resize and RAF.
     renderFrame(performance.now());

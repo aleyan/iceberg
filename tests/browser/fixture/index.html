@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="/main.css" />
+  <title>Iceberg browser tests</title>
+  <style>
+    @font-face { font-family: IcebergTest; src: url('/fonts/test.ttf'); font-display: block; }
+    html, body { margin: 0; width: 100%; min-height: 100%; }
+    #iceberg { width: 100%; height: 100svh; --iceberg-font-family: IcebergTest; --iceberg-mono-font-family: IcebergTest; }
+    header, footer { display: none; height: 120px; background: #102030; }
+    .embedded header, .embedded footer { display: block; }
+  </style>
+</head>
+<body>
+  <header>Embedding page</header>
+  <main id="iceberg"></main>
+  <footer>End of embedding page</footer>
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

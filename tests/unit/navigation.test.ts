@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { easeCamera } from '../src/navigation';
+import { easeCamera } from '../../src/navigation';
 
 test('camera easing follows the same trajectory at different refresh rates', () => {
   const advance = (steps: number) => {

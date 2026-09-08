@@ -211,6 +211,20 @@ documentation/license. The small synthetic catalogue under `demo/items.toml`
 is for local development and tests and is deliberately not part of the npm
 package. The real Python catalogue remains in the consuming site.
 
+## Tests
+
+`bun run check` runs source and test typechecks, the unit suite, and the demo
+bundle check. `bun run test:unit:coverage` writes an LCOV report.
+
+For the real-browser suite, run `bun run test:install`, then
+`bun run test:browser` and `bun run test:performance`. Chrome and Firefox each
+run desktop and mobile viewport profiles. `bun run test:screenshots` compares
+reviewed screenshots inside a pinned Linux container and requires Docker.
+CI runs every suite and retains failure artifacts and performance measurements.
+
+See [the testing guide](tests/browser/README.md) for coverage, performance budgets,
+baseline updates, mobile-emulation limits, and troubleshooting.
+
 ## Prepare a release
 
 1) Update the version in package.json

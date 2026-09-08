@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { JSDOM } from 'jsdom';
-import { createViewSelector } from '../src/view-selector';
+import { createViewSelector } from '../../src/view-selector';
 
 test('dropdown shows only the current choice and opens a vertical menu of three choices', () => {
   const dom = new JSDOM('<main></main>');

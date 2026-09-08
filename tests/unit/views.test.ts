@@ -1,13 +1,13 @@
 import { afterEach, expect, mock, test } from 'bun:test';
 import { JSDOM } from 'jsdom';
 import * as THREE from 'three';
-import { assertView, constrainYaw, icebergViews, placeFrontLabels } from '../src/view';
-import { parseItems } from '../src/item-data';
+import { assertView, constrainYaw, icebergViews, placeFrontLabels } from '../../src/view';
+import { parseItems } from '../../src/item-data';
 
 // Exercise real label DOM and navigation without a GPU or font rasterizer.
-mock.module('../src/item-text.js', () => ({ createItemText: () => ({ rebuild() {}, resize() {}, dispose() {} }) }));
-const { createItemLabels } = await import('../src/item-labels');
-const items = parseItems(await Bun.file(new URL('../demo/items.toml', import.meta.url)).text());
+mock.module('../../src/item-text.js', () => ({ createItemText: () => ({ rebuild() {}, resize() {}, dispose() {} }) }));
+const { createItemLabels } = await import('../../src/item-labels');
+const items = parseItems(await Bun.file(new URL('../../demo/items.toml', import.meta.url)).text());
 let cleanup = () => {};
 afterEach(() => cleanup());
 

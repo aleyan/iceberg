@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { defaultIcebergAssets } from "../src/index";
+import { defaultIcebergAssets } from "../../src/index";
 
 test("ships every default runtime asset", () => {
   for (const assetUrl of Object.values(defaultIcebergAssets)) {

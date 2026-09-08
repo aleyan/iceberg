@@ -269,10 +269,14 @@ export function createItemLabels(
     if (restoreSelection) restoreUrl();
     else {
       updateExpansion();
-      const active = labels.find(label => label.item.slug === pinned);
-      if (active) navigate(active.position, active.angle, true);
+      focusPinned();
     }
     dirty = true;
+  }
+
+  function focusPinned() {
+    const active = labels.find(label => label.item.slug === pinned);
+    if (active) navigate(active.position, active.angle, true);
   }
 
   function onKey(event: KeyboardEvent) {
@@ -285,6 +289,7 @@ export function createItemLabels(
   window.addEventListener('keydown', onKey);
 
   return {
+    focusPinned,
     setNavigating(active: boolean) {
       navigating = active;
       if (active && preview) {
