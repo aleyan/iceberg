@@ -223,15 +223,6 @@ test('native touch swipes over descriptions and taps remain usable', async ({ pa
   await expect(page.locator('.is-pinned')).toHaveCount(0);
 });
 
-test('disposing removes the renderer and overlays without browser errors', async ({ page }) => {
-  await openIceberg(page);
-  await page.evaluate(() => window.icebergTest.controller.dispose());
-  await expect(page.locator('#iceberg > *')).toHaveCount(0);
-  await page.mouse.wheel(0, 100);
-  await page.keyboard.press('Escape');
-  await noScrollbars(page);
-});
-
 // Exercise the production render loop, including the elapsed-time value passed
 // to easing: a unit test of easeCamera alone cannot catch a caller's time cap.
 test('camera easing follows elapsed time even when frames are sparse', async ({ page }) => {
@@ -245,14 +236,24 @@ test('camera easing follows elapsed time even when frames are sparse', async ({ 
     await page.clock.runFor(16 - await page.evaluate(() => performance.now() % 16));
     const initial = await labelY(page, 'entry-23');
     await page.keyboard.press('ArrowDown');
-    if (dense) await page.clock.runFor(128);
-    else await page.clock.fastForward(128);
+    // Two 32ms frames and one 64ms frame must produce the same result.
+    if (dense) { await page.clock.fastForward(32); await page.clock.fastForward(32); }
+    else await page.clock.fastForward(64);
     await expect(page.locator('article[data-slug="entry-23"]')).toBeVisible();
     const current = await labelY(page, 'entry-23');
     expect(current).toBeLessThan(initial - 5);
     positions.push(current);
   }
   expect(positions[1]).toBeCloseTo(positions[0], 0);
+});
+
+test('disposing removes the renderer and overlays without browser errors', async ({ page }) => {
+  await openIceberg(page);
+  await page.evaluate(() => window.icebergTest.controller.dispose());
+  await expect(page.locator('#iceberg > *')).toHaveCount(0);
+  await page.mouse.wheel(0, 100);
+  await page.keyboard.press('Escape');
+  await noScrollbars(page);
 });
 
 // A page-sized jump can hide the old anchor in one frame. Its DOM transform

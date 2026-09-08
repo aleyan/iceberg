@@ -70,7 +70,9 @@ Linux, matching CI: amd64 for Chrome for Testing and arm64 for Firefox. The sour
 `node_modules` volume keeps container dependencies out of the host installation.
 The Chrome image uses emulation on Apple Silicon; the Firefox image uses
 emulation on Intel hosts. This can be slower than native execution. Browser revisions, the
-Dockerfile, and the CI image must be updated together.
+Dockerfile, and the CI image must be updated together. Linux Chrome uses ANGLE's
+OpenGL backend with Mesa software rendering; native local runs retain Chrome's
+normal backend.
 
 Layout and screenshot tests use Playwright's controlled clock. They advance
 camera easing and the loading-indicator fade directly, then stop time between
@@ -82,8 +84,8 @@ A worker retains one loaded scene per viewport/device-scale configuration.
 Before every case, `openIceberg` resets the embedding layout, page scroll,
 selection, focus, view, and orientation through public APIs/events. It waits for
 the renderer's resize observer before rebuilding placements, including width
-changes caused by classic scrollbars. Disposal is still tested; the following
-case reloads the disposed scene. Cases remain individually runnable, with
+changes caused by classic scrollbars. Disposal is tested last to avoid an
+unnecessary reload; a later case can still reload a disposed scene. Cases remain individually runnable, with
 separate traces and assertions. Reusing assets avoids repeating model decoding,
 shader initialization, and glyph atlas setup for each keyboard or menu check.
 
