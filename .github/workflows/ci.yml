@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   unit:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -40,12 +40,11 @@ jobs:
       fail-fast: false
       matrix:
         profile:
-          - { project: chrome-desktop, runner: ubuntu-24.04 }
-          - { project: chrome-mobile, runner: ubuntu-24.04 }
+          - { project: chrome-desktop, runner: ubuntu-24.04-arm }
+          - { project: chrome-mobile, runner: ubuntu-24.04-arm }
           - { project: firefox-desktop, runner: ubuntu-24.04-arm }
           - { project: firefox-mobile, runner: ubuntu-24.04-arm }
-        # Native wheel acknowledgements are slow under software Chrome. Keep
-        # frame measurements isolated from the longer interaction/visual suite.
+        # Keep frame measurements isolated from interaction and visual checks.
         suite:
           - { name: browser, files: 'layout.spec.ts screenshots.spec.ts' }
           - { name: performance, files: 'performance.spec.ts' }

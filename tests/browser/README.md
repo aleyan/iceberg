@@ -66,10 +66,11 @@ The 0.2% pixel allowance accommodates small rasterization differences while
 retaining checks for label, camera, menu, and tooltip regressions.
 
 The screenshot commands build `tests/browser/Dockerfile` and run under Xvfb in
-Linux, matching CI: amd64 for Chrome for Testing and arm64 for Firefox. The source is bind-mounted; an anonymous Linux
+Linux ARM64 for both browsers, matching the `ubuntu-24.04-arm` CI runners.
+The source is bind-mounted; an anonymous Linux
 `node_modules` volume keeps container dependencies out of the host installation.
-The Chrome image uses emulation on Apple Silicon; the Firefox image uses
-emulation on Intel hosts. This can be slower than native execution. Browser revisions, the
+Both browsers run natively on Apple Silicon; Intel hosts use ARM64 emulation,
+which can be slower than native execution. Browser revisions, the
 Dockerfile, and the CI image must be updated together. Linux Chrome uses ANGLE's
 OpenGL backend with Mesa software rendering; native local runs retain Chrome's
 normal backend.
