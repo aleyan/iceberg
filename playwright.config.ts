@@ -7,6 +7,11 @@ const desktop = { width: 1280, height: 900 };
 const chromeLaunch = process.env.CI ? {
   args: ['--use-gl=angle', '--use-angle=gl', '--ignore-gpu-blocklist'],
 } : undefined;
+const chromeUse = {
+  browserName: 'chromium' as const,
+  channel: process.env.ICEBERG_CHROME_CHANNEL ?? 'chromium',
+  launchOptions: chromeLaunch,
+};
 
 export default defineConfig({
   testDir: './tests/browser',
@@ -40,8 +45,8 @@ export default defineConfig({
     video: 'off',
   },
   projects: [
-    { name: 'chrome-desktop', use: { browserName: 'chromium', channel: process.env.ICEBERG_CHROME_CHANNEL ?? 'chromium', launchOptions: chromeLaunch, viewport: desktop } },
-    { name: 'chrome-mobile', use: { browserName: 'chromium', channel: process.env.ICEBERG_CHROME_CHANNEL ?? 'chromium', launchOptions: chromeLaunch, viewport: mobile, isMobile: true, hasTouch: true } },
+    { name: 'chrome-desktop', use: { ...chromeUse, viewport: desktop } },
+    { name: 'chrome-mobile', use: { ...chromeUse, viewport: mobile, isMobile: true, hasTouch: true } },
     { name: 'firefox-desktop', use: { browserName: 'firefox', viewport: desktop } },
     // Firefox supports viewport/touch testing, but not Playwright's isMobile option.
     { name: 'firefox-mobile', use: { browserName: 'firefox', viewport: mobile, hasTouch: true } },

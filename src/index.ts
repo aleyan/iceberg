@@ -216,10 +216,7 @@ function initializeIceberg(
     alpha: true,
     powerPreference: "high-performance",
   });
-  onCleanup(() => {
-    animation?.dispose();
-    renderer.dispose();
-  });
+  onCleanup(() => renderer.dispose());
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;

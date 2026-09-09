@@ -62,6 +62,7 @@ const items: IcebergItem[] = Array.from({ length: 110 }, (_, i) => ({
   cursedness_rating: (i * 7 % 11) / 10 * 10,
 }));
 const host = document.querySelector<HTMLElement>('#iceberg')!;
+const portrait = host.clientHeight > host.clientWidth;
 // Wait for the actual model, HDR, and texture loaders. Browser-wide
 // "networkidle" can stall even after these resources have finished loading.
 const assetsReady = new Promise<void>((resolve, reject) => {
@@ -76,8 +77,8 @@ const controller = mountIceberg(host, {
   stillFrame: params.has('still'),
   descentPrompt: false,
   hint: false,
-  underwaterStretch: host.clientHeight > host.clientWidth ? 4 : 3,
-  aboveWaterLabelStretch: host.clientHeight > host.clientWidth ? 2 : 1,
+  underwaterStretch: portrait ? 4 : 3,
+  aboveWaterLabelStretch: portrait ? 2 : 1,
   assets: {
     model: '/assets/models/iceberg-web.glb',
     environment: '/assets/environment/ocean-panorama.hdr',
