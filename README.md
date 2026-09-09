@@ -4,6 +4,19 @@ A reusable interactive 3D iceberg for the web. It renders the iceberg, split
 ocean, atmosphere, and depth-aware item labels; your application supplies the
 catalogue.
 
+
+## Affordances
+
+Click the iceberg or focus it with Tab to navigate without a mouse wheel.
+Up/Down moves a line, Page Up/Down (or Shift+Space/Space) moves a page, and
+Home/End jumps to the top/bottom. Left/Right rotates within the selected view's
+limits. Holding an arrow key uses the keyboard's normal repeat behavior.
+
+After 15 seconds without interaction, water motion smoothly decelerates over
+five seconds while rendering stays at full frame rate. At 20 seconds, motion
+reaches zero and rendering stops. Interacting with the viewer, changing views,
+or resizing resumes normal motion from the saved animation phase.
+
 ## Install
 
 ```sh
@@ -30,7 +43,7 @@ const host = document.querySelector<HTMLElement>("#iceberg");
 if (host) {
   try {
     const items: IcebergItem[] = parseItems(itemsToml);
-    const iceberg = mountIceberg(host, { items });
+    const iceberg = mountIceberg(host, { items, viewSelector: true });
     // Register iceberg.dispose() with your component or route's cleanup hook.
     await iceberg.ready;
   } catch (error) {
@@ -142,7 +155,50 @@ HTML.
 By default, selecting an item writes `?item=<slug>` and browser Back/Forward
 restores it. Set `syncUrl: false` to keep the containing page URL untouched.
 
+## Views
+
+The default `orbit` view keeps the original full rotation and labels around the
+whole iceberg. `arc` limits rotation to 30 degrees total (15 degrees either side)
+and compresses the original irregular label arrangement onto the front arc.
+Items remain reachable by descending, without needing to turn to the back.
+`list` places names at equal intervals down the center, with horizontal rotation
+locked. Labels stay at fixed world positions and move with the iceberg in every
+view; Arc retains the original depths, and List spaces names across the same
+depth range. List uses the center column's width to reduce wrapping. All three
+views share camera scrolling, label rendering, occlusion, and detail popups.
+Wheel and touch navigation continue over open descriptions. Hover previews stay
+closed while navigating; explicitly selected descriptions remain pinned.
+
+Enable the top-right dropdown with `viewSelector: true`. It shows the current
+choice (Orbit, Arc, or List) and opens a vertical menu. Its font size matches the
+item names. The selector
+is opt-in, so existing embeddings keep their current appearance. Selected items
+and their URL links survive view changes.
+
+```ts
+import { icebergViews, mountIceberg, type IcebergView } from "@aleyan/iceberg";
+
+const iceberg = mountIceberg(host, {
+  items,
+  view: "arc",
+  viewSelector: true,
+  onViewChange: (view: IcebergView) => console.log(view),
+});
+// For custom controls, omit viewSelector and use the controller:
+iceberg.setView("list");
+console.log(iceberg.view, iceberg.availableViews, icebergViews);
+// availableViews and icebergViews are the immutable ["orbit", "arc", "list"].
+```
+
+`setView()` also works before `ready` resolves. Unknown modes throw `TypeError`;
+valid changes after disposal do nothing. The default interaction hint and canvas
+accessibility instructions update with the mode. Custom hints remain host-owned.
+
 ## Options
+
+- `view`: initial `orbit`, `arc`, or `list` layout; defaults to `orbit`.
+- `viewSelector`: displays the built-in mode selector; defaults to `false`.
+- `onViewChange`: callback after a mode change, for custom controls or host state.
 
 - `aboveWaterLabelStretch`: expands the above-water label span; defaults to 1.
 - `assets`: overrides for the model, HDR environment, sky, or relief texture.
@@ -168,40 +224,26 @@ documentation/license. The small synthetic catalogue under `demo/items.toml`
 is for local development and tests and is deliberately not part of the npm
 package. The real Python catalogue remains in the consuming site.
 
+## Tests
+
+`bun run check` runs source and test typechecks, the unit suite, and the demo
+bundle check. `bun run test:unit:coverage` writes an LCOV report.
+
+For the real-browser suite, run `bun run test:install`, then
+`bun run test:browser` and `bun run test:performance`. Chrome and Firefox each
+run desktop and mobile viewport profiles. `bun run test:screenshots` compares
+reviewed screenshots inside a pinned Linux container and requires Docker.
+CI runs every suite and retains failure artifacts and performance measurements.
+
+See [the testing guide](tests/browser/README.md) for coverage, performance budgets,
+baseline updates, mobile-emulation limits, and troubleshooting.
+
 ## Prepare a release
 
-```sh
-bun run pack:release
-```
+1) Update the version in package.json
+2) Run `bun run pack:release`
+3) Publish a release from github releases. This causes publish.yaml workflow to publish to npm.
 
-`bun run pack:release` installs dependencies from the lockfile without updating it,
-runs the checks, rebuilds `dist/` from scratch, creates the tarball,
-and verifies that it contains the JavaScript, type declarations, styles, and
-runtime assets. It also checks that development files are excluded. For version
-0.1.1 the output is `aleyan-iceberg-0.1.1.tgz`.
-
-Use this command instead of relying on `prepack`: Bun 1.3.8 can omit that hook
-when packing, leaving `dist/` missing or stale. Install the verified tarball in
-a consuming application and check its production build before releasing.
-
-### Publish through GitHub Releases
-
-One-time setup: in the npm package's **Settings → Trusted Publisher**, select
-GitHub Actions and enter user `aleyan`, repository `iceberg`, and workflow
-filename `publish.yml`. Leave the environment blank and allow `npm publish`.
-See the [npm trusted publishing guide](https://docs.npmjs.com/trusted-publishers/).
-No npm token or GitHub secret is needed.
-
-Commit and push the release changes, including the workflow, then create a
-GitHub release targeting that commit with a tag matching `package.json`
-(for example, `v0.1.1`). Publishing the release triggers `publish.yml`; saving
-a draft does not publish to npm.
-
-The workflow checks the version, runs `bun run pack:release`, and publishes
-the verified tarball using npm's OIDC authentication with automatic provenance.
-Bun handles dependency installation, tests, and builds; npm is used only to
-publish. Stable releases use the `latest` npm tag. Prerelease versions must be
-marked as prereleases on GitHub and use the `next` npm tag.
 
 ## Assets
 

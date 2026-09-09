@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { arrangeItems, parseItems, slugFromQuery } from '../src/item-data';
-const source = readFileSync(new URL('../demo/items.toml', import.meta.url), 'utf8');
+import { arrangeItems, parseItems, slugFromQuery } from '../../src/item-data';
+const source = readFileSync(new URL('../../demo/items.toml', import.meta.url), 'utf8');
 const items = parseItems(source);
 
 test('reads all rows independently of the declared count and accepts new entries', () => {

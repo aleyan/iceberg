@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import * as THREE from "three";
-import { createStretchedIcebergGeometry } from "../src/ice-geometry";
+import { createStretchedIcebergGeometry } from "../../src/ice-geometry";
 
 test("dequantizes positions before stretching them beyond their encoded range", () => {
   const source = new THREE.BufferGeometry();

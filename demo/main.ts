@@ -10,6 +10,7 @@ const requestedStretch = Number(params.get("icebergStretch"));
 
 mountIceberg(host, {
   items: parseItems(itemsSource),
+  viewSelector: true,
   assets: {
     model: "/assets/models/iceberg-web.glb",
     environment: "/assets/environment/ocean-panorama.hdr",

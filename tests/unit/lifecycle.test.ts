@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createLifecycle } from "../src/lifecycle";
+import { createLifecycle } from "../../src/lifecycle";
 
 test("disposing before readiness rejects with AbortError and releases resources once", async () => {
   const lifecycle = createLifecycle();

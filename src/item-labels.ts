@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { placeFrontLabels, type IcebergView } from './view.js';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
 import { createItemText } from './item-text.js';
 import { arrangeItems, slugFromQuery, type IcebergItem } from './item-data.js';
@@ -38,6 +39,7 @@ export function createItemLabels(
     positions: readonly THREE.Vector3[],
   ) => void,
   options: {
+    view: IcebergView;
     aboveWaterLabelStretch: number;
     ariaLabel: string;
     deepestLabelSpan: () => number;
@@ -45,6 +47,7 @@ export function createItemLabels(
     syncUrl: boolean;
   },
 ) {
+  let view = options.view;
   const instanceId = ++labelSetId;
   const layer = document.createElement('section');
   layer.className = 'iceberg-viewer__item-layer';
@@ -62,6 +65,7 @@ export function createItemLabels(
   let preview: string | null = null;
   let leaveTimer: ReturnType<typeof setTimeout> | undefined;
   let dirty = true;
+  let navigating = false;
   let initialNavigation = true;
   const lastMatrix = new THREE.Matrix4();
   let lastWidth = 0, lastHeight = 0;
@@ -74,6 +78,10 @@ export function createItemLabels(
   const intersections: THREE.Intersection[] = [];
 
   function rebuildText() {
+    // A centered column can use its available horizontal space instead of
+    // wrapping long names into the neighboring row.
+    if (view === 'list') layer.style.setProperty('--iceberg-item-width', `${Math.min(440, Math.max(160, host.clientWidth - 32))}px`);
+    else layer.style.removeProperty('--iceberg-item-width');
     // Measure every name, including offscreen ones, without exposing the DOM.
     layer.style.visibility = 'hidden';
     labels.forEach(label => { label.element.hidden = false; });
@@ -100,10 +108,12 @@ export function createItemLabels(
     const active = pinned ?? preview;
     for (const label of labels) {
       const expanded = label.item.slug === active;
-      label.element.classList.toggle('is-expanded', expanded);
       label.element.classList.toggle('is-pinned', label.item.slug === pinned);
-      label.button.setAttribute('aria-expanded', String(expanded));
-      label.details.hidden = !expanded;
+      if (label.details.hidden === expanded) {
+        label.element.classList.toggle('is-expanded', expanded);
+        label.button.setAttribute('aria-expanded', String(expanded));
+        label.details.hidden = !expanded;
+      }
     }
     dirty = true;
   }
@@ -135,12 +145,14 @@ export function createItemLabels(
     preview = null;
     status.hidden = !slug || !!label;
     status.textContent = label || !slug ? '' : `This iceberg has no item named “${slug}”.`;
-    if (label) navigate(label.position, label.angle, initialNavigation);
+    if (label) {
+      navigate(label.position, label.angle, initialNavigation);
+    }
     initialNavigation = false;
     updateExpansion();
   }
 
-  function rebuild() {
+  function rebuild(restoreSelection = true) {
     if (!mesh || !bounds || !items.length) return;
     const box = bounds;
     const center = box.getCenter(new THREE.Vector3());
@@ -150,14 +162,16 @@ export function createItemLabels(
     const direction = new THREE.Vector3();
     measurements.disconnect();
     layer.replaceChildren();
-    labels = arrangeItems(
+    let placements = arrangeItems(
       items,
       waterLevel,
       bounds.max.y,
       bounds.min.y,
       options.aboveWaterLabelStretch,
       options.deepestLabelSpan(),
-    ).map(({ item, y, angle }) => {
+    );
+    if (view !== 'orbit') placements = placeFrontLabels(placements, view);
+    labels = placements.map(({ item, y, angle }) => {
       direction.set(Math.sin(angle), 0, Math.cos(angle));
       const origin = new THREE.Vector3(center.x, y, center.z).addScaledVector(direction, radius);
       ray.set(origin, direction.clone().negate());
@@ -173,7 +187,9 @@ export function createItemLabels(
       const fallbackRadius = below > 0
         ? size.x * 0.34 + below * 0.16
         : size.x * (0.29 + Math.min(above, 2) * 0.04);
-      const position = hit ? hit.point.clone().addScaledVector(direction, upperSpread)
+      const position = view === 'list'
+        ? new THREE.Vector3(center.x, y, box.max.z + 1.15)
+        : hit ? hit.point.clone().addScaledVector(direction, upperSpread)
         : new THREE.Vector3(center.x, y, center.z).addScaledVector(direction, fallbackRadius);
 
       const element = document.createElement('article');
@@ -211,12 +227,15 @@ export function createItemLabels(
       dismiss.type = 'button';
       dismiss.className = 'iceberg-viewer__item-close';
       dismiss.textContent = 'Close';
-      dismiss.addEventListener('click', () => { close(); host.querySelector('canvas')?.focus({ preventScroll: true }); });
+      dismiss.addEventListener('click', () => {
+        close();
+        host.querySelector('canvas')?.focus({ preventScroll: true });
+      });
       footer.append(source, dismiss);
       details.append(title, description, footer);
       element.append(button, details);
       element.addEventListener('pointerenter', event => {
-        if (event.pointerType === 'touch') return;
+        if (event.pointerType === 'touch' || navigating) return;
         clearTimeout(leaveTimer);
         if (!pinned) { preview = item.slug; updateExpansion(); }
       });
@@ -247,8 +266,17 @@ export function createItemLabels(
       labels.map(label => label.position.clone()),
     );
     rebuildText();
-    restoreUrl();
+    if (restoreSelection) restoreUrl();
+    else {
+      updateExpansion();
+      focusPinned();
+    }
     dirty = true;
+  }
+
+  function focusPinned() {
+    const active = labels.find(label => label.item.slug === pinned);
+    if (active) navigate(active.position, active.angle, true);
   }
 
   function onKey(event: KeyboardEvent) {
@@ -261,6 +289,21 @@ export function createItemLabels(
   window.addEventListener('keydown', onKey);
 
   return {
+    focusPinned,
+    setNavigating(active: boolean) {
+      navigating = active;
+      if (active && preview) {
+        preview = null;
+        clearTimeout(leaveTimer);
+        updateExpansion();
+      }
+    },
+    setView(next: IcebergView) {
+      view = next;
+      preview = null;
+      clearTimeout(leaveTimer);
+      rebuild(false);
+    },
     setIceberg(object: THREE.Object3D, box: THREE.Box3, water: number) {
       mesh = object;
       object.traverse(child => {
@@ -279,7 +322,7 @@ export function createItemLabels(
       if (resized && labels.length) rebuildText();
       dirty = false;
       lastWidth = width; lastHeight = height;
-      layer.style.setProperty('--iceberg-card-width', `${Math.min(320, Math.max(160, width - 32))}px`);
+      if (resized) layer.style.setProperty('--iceberg-card-width', `${Math.min(320, Math.max(160, width - 32))}px`);
       lastMatrix.copy(camera.matrixWorld);
       text.resize(width, height);
       function clearAt(x: number, y: number, depth: number) {
@@ -301,9 +344,11 @@ export function createItemLabels(
         // These rays govern hit targets only. Visual clipping is per-pixel in
         // the GPU depth buffer: no angular, crowding, or viewport inset cutoff.
         const exposed = inFrame && clearAt(x, y - 16 + label.height / 2, projected.z);
-        label.element.hidden = !exposed;
+        if (label.element.hidden === exposed) label.element.hidden = !exposed;
         if (!exposed) continue;
-        label.element.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+        const transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+        if (label.element.style.transform !== transform) label.element.style.transform = transform;
+        if (label.details.hidden) continue;
         const halfCard = Math.min(320, width - 32) / 2;
         const cardX = THREE.MathUtils.clamp(x, halfCard + 16, width - halfCard - 16) - x;
         label.element.style.setProperty('--card-offset', `${cardX}px`);
