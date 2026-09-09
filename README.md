@@ -4,10 +4,17 @@ A reusable interactive 3D iceberg for the web. It renders the iceberg, split
 ocean, atmosphere, and depth-aware item labels; your application supplies the
 catalogue.
 
+
+## Affordances
+
 Click the iceberg or focus it with Tab to navigate without a mouse wheel.
 Up/Down moves a line, Page Up/Down (or Shift+Space/Space) moves a page, and
 Home/End jumps to the top/bottom. Left/Right rotates within the selected view's
 limits. Holding an arrow key uses the keyboard's normal repeat behavior.
+
+After 15 seconds without interaction, rendering slows to about 10 fps. After
+20 seconds it stops scheduling animation frames entirely. Interacting with the
+viewer, changing views, or resizing resumes full-rate rendering.
 
 ## Install
 

@@ -247,6 +247,29 @@ test('camera easing follows elapsed time even when frames are sparse', async ({ 
   expect(positions[1]).toBeCloseTo(positions[0], 0);
 });
 
+test('idle animation slows, stops, and resumes on keyboard input', async ({ page }) => {
+  await openIceberg(page, 'view=list');
+  await page.locator('canvas').focus();
+  await page.keyboard.press('Home');
+  const frames = () => page.evaluate(() => window.icebergTest.frameCount);
+  await page.clock.fastForward(14_000);
+  let before = await frames();
+  await page.clock.runFor(64);
+  expect(await frames() - before).toBeGreaterThanOrEqual(3);
+  await page.clock.fastForward(1_000);
+  before = await frames();
+  await page.clock.runFor(400);
+  expect(await frames() - before).toBeGreaterThan(0);
+  expect(await frames() - before).toBeLessThanOrEqual(4);
+  await page.clock.fastForward(5_000);
+  before = await frames();
+  await page.clock.fastForward(60_000);
+  expect(await frames()).toBe(before);
+  await page.keyboard.press('ArrowDown');
+  await page.clock.runFor(64);
+  expect(await frames() - before).toBeGreaterThanOrEqual(3);
+});
+
 test('disposing removes the renderer and overlays without browser errors', async ({ page }) => {
   await openIceberg(page);
   await page.evaluate(() => window.icebergTest.controller.dispose());

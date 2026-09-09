@@ -10,6 +10,7 @@ import type { IcebergItem } from "./item-data.js";
 import { createViewSelector } from "./view-selector.js";
 import { easeCamera } from "./navigation.js";
 import { createLifecycle } from "./lifecycle.js";
+import { createAnimationLoop } from "./animation-loop.js";
 
 import { assertView, constrainYaw, icebergViews, type IcebergView } from "./view.js";
 export { icebergViews, type IcebergView } from "./view.js";
@@ -146,7 +147,7 @@ function initializeIceberg(
   const descentPromptText = document.createElement("span");
   descentPromptText.textContent = options.descentPrompt === false
     ? ""
-    : options.descentPrompt ?? "Scroll down below the water line to descend";
+    : options.descentPrompt ?? "Scroll down to explore below the water line.";
   const descentPromptArrow = document.createElement("span");
   descentPromptArrow.className = "iceberg-viewer__descent-prompt-arrow";
   descentPromptArrow.setAttribute("aria-hidden", "true");
@@ -193,6 +194,7 @@ function initializeIceberg(
     window.visualViewport?.removeEventListener("scroll", updateOverlayBounds);
   });
 
+  let animation: ReturnType<typeof createAnimationLoop> | undefined;
   let loadingRemoveTimer: ReturnType<typeof setTimeout> | undefined;
   let descentPromptTimer: ReturnType<typeof setTimeout> | undefined;
   onCleanup(() => {
@@ -213,7 +215,7 @@ function initializeIceberg(
     powerPreference: "high-performance",
   });
   onCleanup(() => {
-    renderer.setAnimationLoop(null);
+    animation?.dispose();
     renderer.dispose();
   });
   renderer.setClearColor(0x000000, 0);
@@ -663,6 +665,7 @@ function initializeIceberg(
   function setView(next: IcebergView) {
     assertView(next);
     if (lifecycle.disposed || next === view) return;
+    animation?.wake();
     view = next;
     touchVelocityYaw = 0;
     touchVelocityY = 0;
@@ -820,6 +823,7 @@ function initializeIceberg(
   }
 
   function resize() {
+    animation?.wake();
     updateOverlayBounds();
     const bounds = host.getBoundingClientRect();
     width = Math.max(1, Math.round(bounds.width));
@@ -842,7 +846,18 @@ function initializeIceberg(
   resizeObserver.observe(host);
   resize();
 
-  renderer.setAnimationLoop(renderFrame);
+  animation = createAnimationLoop(renderFrame);
+  const wakeAnimation = () => animation?.wake();
+  const activityEvents = ["pointerdown", "pointermove", "pointerup", "pointercancel", "pointerout", "wheel", "keydown", "click", "focusin"];
+  for (const event of activityEvents) host.addEventListener(event, wakeAnimation, { capture: true, passive: true });
+  window.addEventListener("popstate", wakeAnimation);
+  // Asset completion can change the scene after an unusually slow load.
+  void ready.then(wakeAnimation, () => {});
+  onCleanup(() => {
+    animation?.dispose();
+    for (const event of activityEvents) host.removeEventListener(event, wakeAnimation, true);
+    window.removeEventListener("popstate", wakeAnimation);
+  });
 
   return { ready, dispose, availableViews: icebergViews, get view() { return view; }, setView };
 }
