@@ -62,8 +62,6 @@ const items: IcebergItem[] = Array.from({ length: 110 }, (_, i) => ({
   cursedness_rating: (i * 7 % 11) / 10 * 10,
 }));
 const host = document.querySelector<HTMLElement>('#iceberg')!;
-// Ensure the initial GPU glyph atlas uses the same bundled font on every OS.
-await document.fonts.load('15px IcebergTest');
 // Wait for the actual model, HDR, and texture loaders. Browser-wide
 // "networkidle" can stall even after these resources have finished loading.
 const assetsReady = new Promise<void>((resolve, reject) => {

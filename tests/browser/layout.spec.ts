@@ -249,6 +249,10 @@ test('camera easing follows elapsed time even when frames are sparse', async ({ 
 
 test('idle animation slows, stops, and resumes on keyboard input', async ({ page }) => {
   await openIceberg(page, 'view=list');
+  // Finish layout/resize notifications and park the pointer outside the scene
+  // before measuring inactivity; either can otherwise wake the renderer.
+  await page.mouse.move(-10, -10);
+  await page.clock.runFor(32);
   await page.locator('canvas').focus();
   await page.keyboard.press('Home');
   const frames = () => page.evaluate(() => window.icebergTest.frameCount);

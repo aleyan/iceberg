@@ -14,7 +14,6 @@ Bun.serve({
     const path = new URL(request.url).pathname;
     if (path === '/health') return new Response('iceberg-browser-tests');
     if (path === '/') return new Response(Bun.file(new URL('fixture/index.html', import.meta.url)));
-    if (path === '/fonts/test.ttf') return new Response(Bun.file(new URL('fixture/fonts/AtkinsonHyperlegible-Regular.ttf', import.meta.url)));
     if (files.has(path)) return new Response(files.get(path));
     if (/^\/assets\/(models|environment|textures)\/[a-z0-9.-]+$/.test(path)) {
       return new Response(Bun.file(resolve(import.meta.dir, '../..' + path)));

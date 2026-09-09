@@ -2,8 +2,9 @@
 
 The fixture bundles the real library source and renders the shipped GLB, water,
 sky, textures, and GPU text atlas. Its deterministic 110-item catalogue exercises
-all ten depths without depending on aleyan.com or an external server. A bundled
-OFL-licensed Atkinson Hyperlegible font keeps text measurements reproducible.
+all ten depths without depending on aleyan.com or an external server. The fixture
+uses the package’s default system fonts; the pinned Linux container keeps the
+installed fonts consistent between local screenshot tests and CI.
 
 ## Run locally
 
@@ -162,7 +163,7 @@ bun x playwright show-trace path/to/trace.zip
 
 Local test artifacts are in `test-results/local/`; container/CI artifacts are in
 `test-results/ci/`. The HTML report is in `playwright-report/`. All are ignored by
-Git. Tests, browser dependencies, screenshots, and fonts are excluded from the
+Git. Tests, browser dependencies, and screenshots are excluded from the
 published npm tarball.
 
 References: [Playwright visual comparisons](https://playwright.dev/docs/test-snapshots),
