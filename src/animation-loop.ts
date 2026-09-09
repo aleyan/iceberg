@@ -2,52 +2,55 @@ interface AnimationClock {
   now(): number;
   request(callback: FrameRequestCallback): number;
   cancel(id: number): void;
-  delay(callback: () => void, milliseconds: number): number;
-  clear(id: number): void;
 }
 
-/** Full-rate rendering for 15 seconds, 10 fps for five more, then no callbacks. */
-export function createAnimationLoop(render: FrameRequestCallback, clock: AnimationClock = {
+// Integral of full speed for 15s, then 1 - smoothstep over the following 5s.
+// Integrating analytically keeps motion independent of frame rate and prevents
+// skipped frames or waking from idle from jumping the animation's phase.
+function motionMilliseconds(idle: number) {
+  const active = Math.min(Math.max(0, idle), 15_000);
+  const fade = Math.min(Math.max(0, (idle - 15_000) / 5_000), 1);
+  return active + 5_000 * (fade - fade ** 3 + fade ** 4 / 2);
+}
+
+/** Ramp motion to rest at full frame rate, then stop scheduling idle frames. */
+export function createAnimationLoop(render: (timestamp: number, elapsed: number) => void, clock: AnimationClock = {
   now: () => performance.now(),
   request: callback => window.requestAnimationFrame(callback),
   cancel: id => window.cancelAnimationFrame(id),
-  delay: (callback, milliseconds) => window.setTimeout(callback, milliseconds),
-  clear: id => window.clearTimeout(id),
 }) {
   let lastActivity = clock.now();
+  let accumulatedMotion = 0;
   let frame: number | undefined;
-  let timer: number | undefined;
   let disposed = false;
+
+  function elapsed(now: number) {
+    return (accumulatedMotion + motionMilliseconds(now - lastActivity)) / 1_000;
+  }
 
   function tick(timestamp: number) {
     frame = undefined;
     if (disposed) return;
-    const idle = clock.now() - lastActivity;
-    if (idle >= 20_000) return;
-    render(timestamp);
-    if (disposed) return;
-    if (idle >= 15_000) {
-      timer = clock.delay(() => {
-        timer = undefined;
-        if (!disposed && clock.now() - lastActivity < 20_000) frame = clock.request(tick);
-      }, Math.min(100, 20_000 - idle));
-    } else frame = clock.request(tick);
+    const now = clock.now();
+    // Render the exact resting phase once, including when a frame was delayed.
+    render(timestamp, elapsed(now));
+    if (!disposed && now - lastActivity < 20_000) frame = clock.request(tick);
   }
 
   function wake() {
     if (disposed) return;
-    lastActivity = clock.now();
-    if (timer !== undefined) { clock.clear(timer); timer = undefined; }
+    const now = clock.now();
+    accumulatedMotion += motionMilliseconds(now - lastActivity);
+    lastActivity = now;
     if (frame === undefined) frame = clock.request(tick);
   }
 
   function dispose() {
     disposed = true;
     if (frame !== undefined) clock.cancel(frame);
-    if (timer !== undefined) clock.clear(timer);
-    frame = timer = undefined;
+    frame = undefined;
   }
 
   wake();
-  return { wake, dispose };
+  return { wake, dispose, get elapsed() { return elapsed(clock.now()); } };
 }

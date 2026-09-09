@@ -757,19 +757,14 @@ function initializeIceberg(
     },
   );
 
-  const timer = new THREE.Timer();
-  onCleanup(() => timer.dispose());
-  timer.connect(document);
   let lastFrameTimestamp = performance.now();
 
-  function renderFrame(timestamp: number) {
+  function renderFrame(timestamp: number, elapsed = animation?.elapsed ?? 0) {
     // Exponential camera easing is stable for any elapsed time. Capping it
     // makes a dropped frame slow the animation instead of catching up.
     const frameDelta = Math.max(0, timestamp - lastFrameTimestamp);
     const inertiaDelta = Math.min(frameDelta, 34);
     lastFrameTimestamp = timestamp;
-    timer.update(timestamp);
-    const elapsed = timer.getElapsed();
     if (touchInertiaActive && cameraRail.ready) {
       const previousY = cameraTarget.y;
       const nextY = THREE.MathUtils.clamp(

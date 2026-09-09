@@ -12,9 +12,10 @@ Up/Down moves a line, Page Up/Down (or Shift+Space/Space) moves a page, and
 Home/End jumps to the top/bottom. Left/Right rotates within the selected view's
 limits. Holding an arrow key uses the keyboard's normal repeat behavior.
 
-After 15 seconds without interaction, rendering slows to about 10 fps. After
-20 seconds it stops scheduling animation frames entirely. Interacting with the
-viewer, changing views, or resizing resumes full-rate rendering.
+After 15 seconds without interaction, water motion smoothly decelerates over
+five seconds while rendering stays at full frame rate. At 20 seconds, motion
+reaches zero and rendering stops. Interacting with the viewer, changing views,
+or resizing resumes normal motion from the saved animation phase.
 
 ## Install
 

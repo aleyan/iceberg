@@ -273,7 +273,7 @@ test('camera easing follows elapsed time even when frames are sparse', async ({ 
   expect(positions[1]).toBeCloseTo(positions[0], 0);
 });
 
-test('idle animation slows, stops, and resumes on keyboard input', async ({ page }) => {
+test('idle motion keeps full frame rate until stopping, then resumes on input', async ({ page }) => {
   await openIceberg(page, 'view=list');
   // Finish layout/resize notifications and park the pointer outside the scene
   // before measuring inactivity; either can otherwise wake the renderer.
@@ -288,9 +288,8 @@ test('idle animation slows, stops, and resumes on keyboard input', async ({ page
   expect(await frames() - before).toBeGreaterThanOrEqual(3);
   await page.clock.fastForward(1_000);
   before = await frames();
-  await page.clock.runFor(400);
-  expect(await frames() - before).toBeGreaterThan(0);
-  expect(await frames() - before).toBeLessThanOrEqual(4);
+  await page.clock.runFor(64);
+  expect(await frames() - before).toBeGreaterThanOrEqual(3);
   await page.clock.fastForward(5_000);
   before = await frames();
   await page.clock.fastForward(60_000);
