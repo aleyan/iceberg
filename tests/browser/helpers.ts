@@ -16,6 +16,9 @@ export const test = base.extend<{ browserErrors: void; controlledClock: boolean 
     const key = JSON.stringify(options);
     let scene = scenes.get(key);
     if (!scene) {
+      // Playwright 1.63's artifact recorder also tracks browser.newContext and
+      // starts a new trace chunk per test, including on these reused contexts.
+      // Do not start a second manual tracing session here.
       const context = await browser.newContext(options);
       const page = await context.newPage();
       const epoch = new Date('2026-01-01T00:00:00Z');

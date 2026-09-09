@@ -71,7 +71,8 @@ const assetsReady = new Promise<void>((resolve, reject) => {
 const controller = mountIceberg(host, {
   items,
   view: (params.get('view') ?? 'orbit') as IcebergView,
-  viewSelector: true,
+  viewSelector: !params.has('no-selector'),
+  canvasAriaLabel: params.get('canvas-label') ?? undefined,
   stillFrame: params.has('still'),
   descentPrompt: false,
   hint: false,

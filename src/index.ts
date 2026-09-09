@@ -68,6 +68,7 @@ export const defaultIcebergAssets: Readonly<IcebergAssets> = Object.freeze({
   relief: new URL("../assets/textures/glacial-relief.webp", import.meta.url).href,
 });
 
+const DEFAULT_CANVAS_LABEL = "Explore the iceberg. Click or tab here, then use arrows or Page Up and Page Down to descend; drag or use left and right arrows to rotate.";
 const DEFAULT_HINT = "Scroll to descend · Drag to turn · Select a name to keep it open";
 
 /**
@@ -133,7 +134,7 @@ function initializeIceberg(
   canvas.setAttribute(
     "aria-label",
     options.canvasAriaLabel
-      ?? "Explore the iceberg. Click or tab here, then use arrows or Page Up and Page Down to descend; drag or use left and right arrows to rotate.",
+      ?? DEFAULT_CANVAS_LABEL,
   );
 
   const hint = document.createElement("div");
@@ -173,26 +174,27 @@ function initializeIceberg(
     loading.remove();
   });
 
-  const viewSelector = createViewSelector(view, setView);
-  const selector = viewSelector.element;
-  if (options.viewSelector) host.append(selector);
-  onCleanup(() => viewSelector.dispose());
-  let hostDocumentTop = 0;
+  const viewSelector = options.viewSelector ? createViewSelector(view, setView) : undefined;
+  const selector = viewSelector?.element;
   function updateOverlayBounds() {
+    if (!selector) return;
     const bounds = host.getBoundingClientRect();
-    hostDocumentTop = bounds.top + window.scrollY;
     const viewportTop = window.visualViewport?.offsetTop ?? 0;
     const top = Math.max(0, viewportTop - bounds.top);
     selector.style.top = `${Math.min(Math.max(16, bounds.height - 60), top + 16)}px`;
   }
-  window.addEventListener("scroll", updateOverlayBounds, { passive: true });
-  window.visualViewport?.addEventListener("resize", updateOverlayBounds);
-  window.visualViewport?.addEventListener("scroll", updateOverlayBounds);
-  onCleanup(() => {
-    window.removeEventListener("scroll", updateOverlayBounds);
-    window.visualViewport?.removeEventListener("resize", updateOverlayBounds);
-    window.visualViewport?.removeEventListener("scroll", updateOverlayBounds);
-  });
+  if (viewSelector && selector) {
+    host.append(selector);
+    window.addEventListener("scroll", updateOverlayBounds, { passive: true });
+    window.visualViewport?.addEventListener("resize", updateOverlayBounds);
+    window.visualViewport?.addEventListener("scroll", updateOverlayBounds);
+    onCleanup(() => {
+      viewSelector.dispose();
+      window.removeEventListener("scroll", updateOverlayBounds);
+      window.visualViewport?.removeEventListener("resize", updateOverlayBounds);
+      window.visualViewport?.removeEventListener("scroll", updateOverlayBounds);
+    });
+  }
 
   let animation: ReturnType<typeof createAnimationLoop> | undefined;
   let loadingRemoveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -602,7 +604,7 @@ function initializeIceberg(
     }
     // Let an embedding page move the viewer to the top edge before the
     // iceberg starts consuming downward scroll.
-    if (verticalPixels > 0 && hostDocumentTop - window.scrollY > 0.5) return;
+    if (verticalPixels > 0 && host.getBoundingClientRect().top > 0.5) return;
     const nextY = THREE.MathUtils.clamp(
       cameraRail.desiredY - verticalPixels * 0.008,
       cameraRail.minY,
@@ -653,14 +655,14 @@ function initializeIceberg(
   onCleanup(() => itemLabels.dispose());
   function updateViewInterface() {
     host.dataset.icebergView = view;
-    viewSelector.update(view);
+    viewSelector?.update(view);
     if (options.hint === undefined) hint.textContent = view === "list"
       ? "Scroll to descend · Select a name to keep it open"
       : view === "arc" ? "Scroll to descend · Drag to turn 30° · Select a name" : DEFAULT_HINT;
-    canvas.setAttribute("aria-label", view === "list"
+    canvas.setAttribute("aria-label", options.canvasAriaLabel ?? (view === "list"
       ? "Explore the iceberg list. Click or tab here, then scroll or use arrows or Page Up and Page Down to descend. Horizontal rotation is locked."
       : view === "arc" ? "Explore the front of the iceberg. Click or tab here, then scroll or use arrows or Page Up and Page Down to descend; drag or use left and right arrows to rotate within 30 degrees."
-      : options.canvasAriaLabel ?? "Explore the iceberg. Click or tab here, then use arrows or Page Up and Page Down to descend; drag or use left and right arrows to rotate.");
+      : DEFAULT_CANVAS_LABEL));
   }
   function setView(next: IcebergView) {
     assertView(next);

@@ -144,6 +144,10 @@ automatic retries to hide intermittent failures. Reports, performance JSON,
 failure screenshots, and traces are retained as artifacts for 14 days.
 Traces retain DOM snapshots, console, and network events; continuous trace
 screenshots are disabled because GPU readbacks distort performance measurements.
+Playwright 1.63 also records the manually created, reused scene contexts, with
+separate trace chunks and failure screenshots per test. A deliberate failure in
+the second test of a reused scene verified both artifacts; no manual tracing
+session is needed.
 Real-time camera-settling waits allow 20 seconds in CI and five seconds locally;
 layout/visual tests advance their controlled clock instead. The test deadlines
 are separate from the measured frame budgets above.

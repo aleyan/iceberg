@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-type TextLabel = { angle: number; button: HTMLButtonElement; position: THREE.Vector3; width: number; height: number };
+type TextLabel = { button: HTMLButtonElement; position: THREE.Vector3; width: number; height: number };
 
 /** One atlas and one draw call. The ordinary ice depth buffer clips each glyph. */
 export function createItemText(scene: THREE.Scene) {

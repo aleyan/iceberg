@@ -55,7 +55,7 @@ export function createViewSelector(view: IcebergView, onSelect: (view: IcebergVi
   element.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !menu.hidden) {
       event.preventDefault(); event.stopPropagation(); close(true);
-    } else if (event.key === 'Tab') close();
+    } else if (event.key === 'Tab' && !menu.hidden) close(true);
   });
   menu.addEventListener('keydown', event => {
     const index = buttons.indexOf(document.activeElement as HTMLButtonElement);

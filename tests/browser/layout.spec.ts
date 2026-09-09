@@ -140,8 +140,32 @@ for (const view of views) {
 
 test('view switching retains deep links and world anchor heights while scrolling', async ({ page }) => {
   await openIceberg(page, 'view=orbit');
+  // Native Tab must continue from the trigger after a focused menu item hides.
+  await page.locator('.iceberg-viewer__view-selector').evaluate(selector => {
+    for (const side of ['before', 'after'] as const) {
+      const button = document.createElement('button');
+      button.textContent = `${side} selector`;
+      button.dataset.tabProbe = side;
+      button.style.position = 'fixed';
+      selector[side](button);
+    }
+  });
+  try {
+    const trigger = page.locator('.iceberg-viewer__view-trigger');
+    await trigger.click();
+    await page.keyboard.press('Tab');
+    await expect(page.locator('[data-tab-probe="after"]')).toBeFocused();
+    await expect(page.getByRole('menu')).toBeHidden();
+    await trigger.click();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('[data-tab-probe="before"]')).toBeFocused();
+    await expect(page.getByRole('menu')).toBeHidden();
+  } finally {
+    await page.locator('[data-tab-probe]').evaluateAll(elements => elements.forEach(el => el.remove()));
+  }
   const heights = () => page.locator('article[data-world-y]').evaluateAll(es => es.map(e => Number((e as HTMLElement).dataset.worldY)));
   const orbit = await heights();
+  expect(orbit).toHaveLength(110);
   await selectItem(page);
   for (const [view, title] of [['arc', 'Arc'], ['list', 'List'], ['orbit', 'Orbit']] as const) {
     await page.locator('.iceberg-viewer__view-trigger').click();
@@ -151,6 +175,7 @@ test('view switching retains deep links and world anchor heights while scrolling
     await expect(page.locator('.is-pinned')).toHaveAttribute('data-slug', 'entry-56');
     expect(new URL(page.url()).searchParams.get('item')).toBe('entry-56');
     const placed = await heights();
+    expect(placed).toHaveLength(orbit.length);
     if (view !== 'list') placed.forEach((y, i) => expect(y).toBeCloseTo(orbit[i], 8));
     else {
       expect(placed[0]).toBeCloseTo(orbit[0]);
@@ -158,6 +183,7 @@ test('view switching retains deep links and world anchor heights while scrolling
       const gap = placed[0] - placed[1];
       for (let i = 1; i < placed.length; i++) expect(placed[i - 1] - placed[i]).toBeCloseTo(gap);
       const centers = await page.locator('article:not([hidden]) .iceberg-viewer__item-name').evaluateAll(es => es.map(e => { const r = e.getBoundingClientRect(); return r.x + r.width / 2; }));
+      expect(centers.length).toBeGreaterThan(0);
       for (const x of centers) expect(x).toBeCloseTo(page.viewportSize()!.width / 2, 0);
     }
     await page.mouse.move(8, 300);
@@ -272,6 +298,37 @@ test('idle animation slows, stops, and resumes on keyboard input', async ({ page
   await page.keyboard.press('ArrowDown');
   await page.clock.runFor(64);
   expect(await frames() - before).toBeGreaterThanOrEqual(3);
+});
+
+test('embedding shifts and caller options work without a view selector', async ({ page }) => {
+  // These immutable mount options need a fresh mount, rather than a view reset.
+  await page.goto('/?view=orbit&still&embedded&no-selector&canvas-label=Custom%20explorer');
+  await expect.poll(() => page.evaluate(() => window.icebergTest?.assetsLoaded)).toBe(true);
+  await settle(page);
+  await expect(page.locator('.iceberg-viewer__view-selector')).toHaveCount(0);
+  for (const view of views) {
+    await page.evaluate(view => window.icebergTest.controller.setView(view), view);
+    await expect(page.locator('canvas')).toHaveAttribute('aria-label', 'Custom explorer');
+  }
+  const overlayReads = await page.locator('#iceberg').evaluate(host => {
+    const original = host.getBoundingClientRect;
+    let reads = 0;
+    host.getBoundingClientRect = () => { reads++; return original.call(host); };
+    try { window.dispatchEvent(new Event('scroll')); return reads; }
+    finally { host.getBoundingClientRect = original; }
+  });
+  expect(overlayReads, 'no overlay layout work when the selector is disabled').toBe(0);
+  await selectItem(page, 'entry-23');
+  await page.keyboard.press('Escape');
+  // Content above disappears without a host resize or document scroll event.
+  await page.locator('header').evaluate(header => header.remove());
+  expect((await page.locator('#iceberg').boundingBox())!.y).toBe(0);
+  const before = await labelY(page, 'entry-23');
+  await page.mouse.move(8, 200);
+  await page.mouse.wheel(0, 120);
+  await settle(page);
+  expect(await labelY(page, 'entry-23')).toBeLessThan(before - 2);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
 });
 
 test('disposing removes the renderer and overlays without browser errors', async ({ page }) => {
